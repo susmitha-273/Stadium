@@ -21,9 +21,42 @@ window.StadiumPulse = (() => {
       .replace(/\n/g, '<br>');
   };
 
-  const showInfoModal = (title, contentHTML) => {
+  const renderSanitizedMarkdown = (container, text) => {
+    container.replaceChildren();
+    if (!text) return;
+    const lines = text.split('\n');
+    lines.forEach((lineText, idx) => {
+      if (idx > 0) {
+        container.appendChild(document.createElement('br'));
+      }
+      const regex = /\*\*(.*?)\*\*/g;
+      let lastIndex = 0;
+      let match;
+      const lineSpan = document.createElement('span');
+      while ((match = regex.exec(lineText)) !== null) {
+        if (match.index > lastIndex) {
+          lineSpan.appendChild(document.createTextNode(lineText.substring(lastIndex, match.index)));
+        }
+        const strong = document.createElement('strong');
+        strong.textContent = match[1];
+        lineSpan.appendChild(strong);
+        lastIndex = regex.lastIndex;
+      }
+      if (lastIndex < lineText.length) {
+        lineSpan.appendChild(document.createTextNode(lineText.substring(lastIndex)));
+      }
+      container.appendChild(lineSpan);
+    });
+  };
+
+  const showInfoModal = (title, content) => {
     UI.elements.infoModalTitle.textContent = title;
-    UI.elements.infoModalBody.innerHTML = contentHTML;
+    UI.elements.infoModalBody.replaceChildren();
+    if (typeof content === 'string') {
+      renderSanitizedMarkdown(UI.elements.infoModalBody, content);
+    } else if (content instanceof HTMLElement) {
+      UI.elements.infoModalBody.appendChild(content);
+    }
     UI.elements.infoModal.classList.remove('hidden');
   };
 
@@ -583,9 +616,11 @@ window.StadiumPulse = (() => {
       this.elements.settingsBtn.addEventListener('click', () => {
         this.elements.settingsKeyInput.value = State.apiKey;
         this.elements.settingsModal.classList.remove('hidden');
+        this.elements.settingsBtn.setAttribute('aria-expanded', 'true');
       });
       this.elements.settingsClose.addEventListener('click', () => {
         this.elements.settingsModal.classList.add('hidden');
+        this.elements.settingsBtn.setAttribute('aria-expanded', 'false');
       });
       this.elements.infoModalClose.addEventListener('click', () => {
         this.elements.infoModal.classList.add('hidden');
@@ -696,7 +731,7 @@ window.StadiumPulse = (() => {
 
     // Renders the list of real-time transportation
     renderTransitSchedules() {
-      this.elements.transitList.innerHTML = '';
+      this.elements.transitList.replaceChildren();
       TransitSchedules.forEach(item => {
         const div = document.createElement('div');
         div.className = `transit-item ${item.delayed ? 'delayed' : ''}`;
@@ -727,12 +762,15 @@ window.StadiumPulse = (() => {
 
     // Draw active incidents queue
     renderIncidents() {
-      this.elements.incidentList.innerHTML = '';
+      this.elements.incidentList.replaceChildren();
       
       const unresolved = State.incidents.filter(inc => !inc.resolved);
       if (unresolved.length === 0) {
-        this.elements.incidentList.innerHTML = '<p class="empty-state">No incidents logged currently. Stadium operations normal.</p>';
-        this.elements.incidentsLayer.innerHTML = '';
+        const emptyP = document.createElement('p');
+        emptyP.className = 'empty-state';
+        emptyP.textContent = 'No incidents logged currently. Stadium operations normal.';
+        this.elements.incidentList.appendChild(emptyP);
+        this.elements.incidentsLayer.replaceChildren();
         return;
       }
 
@@ -774,7 +812,7 @@ window.StadiumPulse = (() => {
         resolveBtn.style.padding = '6px 12px';
         resolveBtn.style.fontSize = '0.8rem';
         resolveBtn.textContent = 'Mark Resolved';
-        resolveBtn.onclick = () => StadiumPulse.resolveIncident(inc.id);
+        resolveBtn.addEventListener('click', () => window.StadiumPulse.resolveIncident(inc.id));
         footer.appendChild(resolveBtn);
 
         card.appendChild(header);
@@ -791,7 +829,7 @@ window.StadiumPulse = (() => {
 
     // Inject SVG pulsing dots for map representation
     renderMapIncidents() {
-      this.elements.incidentsLayer.innerHTML = '';
+      this.elements.incidentsLayer.replaceChildren();
       State.incidents.filter(inc => !inc.resolved).forEach(inc => {
         if (inc.coords) {
           // Dynamic SVG elements
@@ -837,7 +875,7 @@ window.StadiumPulse = (() => {
       }
 
       // Determine badge unlocks
-      this.elements.badgesContainer.innerHTML = '';
+      this.elements.badgesContainer.replaceChildren();
       if (State.ecoPoints >= 10) {
         this.elements.badgesContainer.appendChild(this.createBadge('Eco Spectator'));
       }
@@ -849,7 +887,12 @@ window.StadiumPulse = (() => {
       }
       
       if (State.ecoPoints === 0) {
-        this.elements.badgesContainer.innerHTML = '<span style="font-size: 0.85rem; color: var(--text-muted); font-style: italic;">Complete challenge items to earn tournament badges!</span>';
+        const pl = document.createElement('span');
+        pl.style.fontSize = '0.85rem';
+        pl.style.color = 'var(--text-muted)';
+        pl.style.fontStyle = 'italic';
+        pl.textContent = 'Complete challenge items to earn tournament badges!';
+        this.elements.badgesContainer.appendChild(pl);
       }
     },
 
@@ -891,7 +934,7 @@ window.StadiumPulse = (() => {
     // Updates operations advisor recommendation widgets
     updateOpsPanel() {
       // 1. Dynamic alerts board
-      this.elements.alertsBoard.innerHTML = '';
+      this.elements.alertsBoard.replaceChildren();
       let highWaitGates = Object.entries(State.stadiumState.gates).filter(([_, wait]) => wait > 20);
       let highDensityStands = Object.entries(State.stadiumState.stands).filter(([_, level]) => level === 'high' || level === 'critical');
       let activeUnresolved = State.incidents.filter(inc => !inc.resolved);
@@ -933,7 +976,7 @@ window.StadiumPulse = (() => {
     },
 
     resetChatGreeting() {
-      this.elements.chatMessages.innerHTML = '';
+      this.elements.chatMessages.replaceChildren();
       let role = "";
       let status = "Zero-Setup Simulator Mode";
       if (State.apiKey && State.apiKey.trim() !== "") {
@@ -986,15 +1029,22 @@ window.StadiumPulse = (() => {
     UI.elements.btnStaff.classList.remove('active', 'staff');
     UI.elements.btnOps.classList.remove('active', 'ops');
     
+    UI.elements.btnFan.setAttribute('aria-selected', 'false');
+    UI.elements.btnStaff.setAttribute('aria-selected', 'false');
+    UI.elements.btnOps.setAttribute('aria-selected', 'false');
+    
     if (view === 'fan') {
       UI.elements.fanView.classList.remove('hidden');
       UI.elements.btnFan.classList.add('active');
+      UI.elements.btnFan.setAttribute('aria-selected', 'true');
     } else if (view === 'staff') {
       UI.elements.staffView.classList.remove('hidden');
       UI.elements.btnStaff.classList.add('active', 'staff');
+      UI.elements.btnStaff.setAttribute('aria-selected', 'true');
     } else if (view === 'ops') {
       UI.elements.opsView.classList.remove('hidden');
       UI.elements.btnOps.classList.add('active', 'ops');
+      UI.elements.btnOps.setAttribute('aria-selected', 'true');
     }
     
     // Refresh chat layout to align personality
@@ -1008,7 +1058,11 @@ window.StadiumPulse = (() => {
     localStorage.setItem('stadiumpulse_api_key', key);
     UI.elements.settingsModal.classList.add('hidden');
     UI.resetChatGreeting();
-    showInfoModal('⚙️ Configuration Saved', '<p>AI interface has been successfully refreshed with your new settings.</p>');
+    const wrapper = document.createElement('div');
+    const p = document.createElement('p');
+    p.textContent = 'AI interface has been successfully refreshed with your new settings.';
+    wrapper.appendChild(p);
+    showInfoModal('⚙️ Configuration Saved', wrapper);
   };
 
   // Toggle Chat Popup
@@ -1064,16 +1118,48 @@ window.StadiumPulse = (() => {
 
     const unlocked = newBadges.filter(b => !oldBadges.includes(b));
     if (unlocked.length > 0) {
-      const content = `
-        <div style="text-align: center; display: flex; flex-direction: column; gap: 16px; padding: 8px;">
-          <div style="font-size: 4rem; animation: floatOrb 2s ease-in-out infinite; transform-origin: center;">🏆</div>
-          <h3>Green Badge Unlocked!</h3>
-          <p>Congratulations! You have earned the <strong>${sanitizeAndFormat(unlocked[0])}</strong> badge for your sustainable choices.</p>
-          <div style="margin: 12px auto; display: inline-block;" class="badge-pill">🏆 ${sanitizeAndFormat(unlocked[0])}</div>
-          <p style="font-size: 0.85rem; color: var(--text-muted);">Thank you for helping us make the 2026 World Cup green!</p>
-        </div>
-      `;
-      showInfoModal('🎉 Achievement Unlocked!', content);
+      const wrapper = document.createElement('div');
+      wrapper.style.textAlign = 'center';
+      wrapper.style.display = 'flex';
+      wrapper.style.flexDirection = 'column';
+      wrapper.style.gap = '16px';
+      wrapper.style.padding = '8px';
+
+      const trophy = document.createElement('div');
+      trophy.style.fontSize = '4rem';
+      trophy.style.animation = 'floatOrb 2s ease-in-out infinite';
+      trophy.style.transformOrigin = 'center';
+      trophy.textContent = '🏆';
+      wrapper.appendChild(trophy);
+
+      const h3 = document.createElement('h3');
+      h3.textContent = 'Green Badge Unlocked!';
+      wrapper.appendChild(h3);
+
+      const p1 = document.createElement('p');
+      p1.appendChild(document.createTextNode('Congratulations! You have earned the '));
+      const bText = document.createElement('strong');
+      bText.textContent = unlocked[0];
+      p1.appendChild(bText);
+      p1.appendChild(document.createTextNode(' badge for your sustainable choices.'));
+      wrapper.appendChild(p1);
+
+      const pillContainer = document.createElement('div');
+      pillContainer.style.margin = '12px auto';
+      pillContainer.style.display = 'inline-block';
+      const pill = document.createElement('div');
+      pill.className = 'badge-pill';
+      pill.textContent = `🏆 ${unlocked[0]}`;
+      pillContainer.appendChild(pill);
+      wrapper.appendChild(pillContainer);
+
+      const p2 = document.createElement('p');
+      p2.style.fontSize = '0.85rem';
+      p2.style.color = 'var(--text-muted)';
+      p2.textContent = 'Thank you for helping us make the 2026 World Cup green!';
+      wrapper.appendChild(p2);
+
+      showInfoModal('🎉 Achievement Unlocked!', wrapper);
     }
   };
 
@@ -1091,12 +1177,16 @@ window.StadiumPulse = (() => {
       const aiRes = await GenAIService.callAI(prompt, systemPrompt);
       
       UI.elements.routeOutput.className = 'alert success';
-      UI.elements.routeOutput.innerHTML = `<strong>AI Transit Advice:</strong><br>${sanitizeAndFormat(aiRes.content)}`;
+      renderSanitizedMarkdown(UI.elements.routeOutput, `**AI Transit Advice:**\n${aiRes.content}`);
     } catch (e) {
       console.error("Transit Route Calculation Error:", e);
       UI.elements.routeOutput.className = 'alert danger';
       UI.elements.routeOutput.textContent = `Error: ${e.message}`;
-      showInfoModal("⚠️ Transit Calculation Error", `<p>Failed to compute transit route: ${sanitizeAndFormat(e.message)}</p>`);
+      const wrapper = document.createElement('div');
+      const p = document.createElement('p');
+      p.textContent = `Failed to compute transit route: ${e.message}`;
+      wrapper.appendChild(p);
+      showInfoModal("⚠️ Transit Calculation Error", wrapper);
     }
   };
 
@@ -1134,7 +1224,11 @@ window.StadiumPulse = (() => {
       console.error("Wayfinding Error:", e);
       UI.elements.wayfinderResult.className = 'alert danger';
       UI.elements.wayfinderSteps.textContent = `Error: ${e.message}`;
-      showInfoModal("⚠️ Wayfinding Error", `<p>Failed to compute wayfinding steps: ${sanitizeAndFormat(e.message)}</p>`);
+      const wrapper = document.createElement('div');
+      const p = document.createElement('p');
+      p.textContent = `Failed to compute wayfinding steps: ${e.message}`;
+      wrapper.appendChild(p);
+      showInfoModal("⚠️ Wayfinding Error", wrapper);
     }
   };
 
@@ -1143,7 +1237,11 @@ window.StadiumPulse = (() => {
     try {
       const topic = UI.elements.annTopic.value.trim();
       if (!topic) {
-        showInfoModal('⚠️ Input Required', '<p>Please input a topic or reference incident for the announcement.</p>');
+        const wrapper = document.createElement('div');
+        const p = document.createElement('p');
+        p.textContent = 'Please input a topic or reference incident for the announcement.';
+        wrapper.appendChild(p);
+        showInfoModal('⚠️ Input Required', wrapper);
         return;
       }
       const lang = UI.elements.annLang.value;
@@ -1164,7 +1262,11 @@ window.StadiumPulse = (() => {
       console.error("Announcement Generation Error:", e);
       UI.elements.annOutput.className = 'alert danger';
       UI.elements.annText.textContent = `Error: ${e.message}`;
-      showInfoModal("⚠️ Generation Error", `<p>Failed to generate announcement: ${sanitizeAndFormat(e.message)}</p>`);
+      const wrapper = document.createElement('div');
+      const p = document.createElement('p');
+      p.textContent = `Failed to generate announcement: ${e.message}`;
+      wrapper.appendChild(p);
+      showInfoModal("⚠️ Generation Error", wrapper);
     }
   };
 
@@ -1222,10 +1324,28 @@ window.StadiumPulse = (() => {
       UI.elements.incidentForm.reset();
 
       // Alert completion
-      showInfoModal('⚠️ Incident Logged', `<p>Incident successfully logged and prioritized by AI as <strong>${sanitizeAndFormat(priority)}</strong>.</p><p>Operational team has been dispatched.</p>`);
+      const wrapper = document.createElement('div');
+      wrapper.style.display = 'flex';
+      wrapper.style.flexDirection = 'column';
+      wrapper.style.gap = '12px';
+      const p1 = document.createElement('p');
+      p1.appendChild(document.createTextNode('Incident successfully logged and prioritized by AI as '));
+      const prStrong = document.createElement('strong');
+      prStrong.textContent = priority;
+      p1.appendChild(prStrong);
+      p1.appendChild(document.createTextNode('.'));
+      wrapper.appendChild(p1);
+      const p2 = document.createElement('p');
+      p2.textContent = 'Operational team has been dispatched.';
+      wrapper.appendChild(p2);
+      showInfoModal('⚠️ Incident Logged', wrapper);
     } catch (e) {
       console.error("Incident Logging Error:", e);
-      showInfoModal("⚠️ Incident Logging Error", `<p>Failed to log incident: ${sanitizeAndFormat(e.message)}</p>`);
+      const wrapper = document.createElement('div');
+      const p = document.createElement('p');
+      p.textContent = `Failed to log incident: ${e.message}`;
+      wrapper.appendChild(p);
+      showInfoModal("⚠️ Incident Logging Error", wrapper);
     }
   };
 
@@ -1293,12 +1413,15 @@ window.StadiumPulse = (() => {
       UI.updateOpsPanel();
 
       // Call Ops Co-pilot AI to update recommendations block
-      UI.elements.copilotAdvice.innerHTML = "<em>AI Co-Pilot analyzing scenario metrics...</em>";
+      UI.elements.copilotAdvice.replaceChildren();
+      const em = document.createElement('em');
+      em.textContent = 'AI Co-Pilot analyzing scenario metrics...';
+      UI.elements.copilotAdvice.appendChild(em);
 
       let systemPrompt = "You are the Stadium Operations AI Co-Pilot. Write a highly tactical load-balancing plan based on the scenario metrics provided. Provide 3 specific actions using bold lists. Limit response to 120 words.";
       
       const aiRes = await GenAIService.callAI(copilotPrompt, systemPrompt);
-      UI.elements.copilotAdvice.innerHTML = `<strong>CO-PILOT RESPONSE PLAN:</strong><br>${sanitizeAndFormat(aiRes.content)}`;
+      renderSanitizedMarkdown(UI.elements.copilotAdvice, `**CO-PILOT RESPONSE PLAN:**\n${aiRes.content}`);
 
       // Update chatbot view if in ops mode currently
       if (State.activeView === 'ops') {
@@ -1306,7 +1429,11 @@ window.StadiumPulse = (() => {
       }
     } catch (e) {
       console.error("Scenario Trigger Error:", e);
-      showInfoModal("⚠️ Simulator Error", `<p>Failed to run simulator scenario: ${sanitizeAndFormat(e.message)}</p>`);
+      const wrapper = document.createElement('div');
+      const p = document.createElement('p');
+      p.textContent = `Failed to run simulator scenario: ${e.message}`;
+      wrapper.appendChild(p);
+      showInfoModal("⚠️ Simulator Error", wrapper);
     }
   };
 
@@ -1365,7 +1492,11 @@ window.StadiumPulse = (() => {
       UI.elements.chatMessages.scrollTop = UI.elements.chatMessages.scrollHeight;
     } catch (e) {
       console.error("Chat Submit Error:", e);
-      showInfoModal("⚠️ Chat Error", `<p>Failed to send query: ${sanitizeAndFormat(e.message)}</p>`);
+      const wrapper = document.createElement('div');
+      const p = document.createElement('p');
+      p.textContent = `Failed to send query: ${e.message}`;
+      wrapper.appendChild(p);
+      showInfoModal("⚠️ Chat Error", wrapper);
     }
   };
 
@@ -1375,14 +1506,43 @@ window.StadiumPulse = (() => {
     highlightSVGElement('map-stand-' + standLetter);
     const density = State.stadiumState.stands[stand];
     const status = density === 'critical' || density === 'high' ? 'Deploying crowd redirects' : 'Normal flow';
-    const content = `
-      <div style="display: flex; flex-direction: column; gap: 12px; font-size: 0.95rem;">
-        <p><strong>Stand:</strong> ${sanitizeAndFormat(stand)}</p>
-        <p><strong>Crowd Density:</strong> <span class="badge" style="background: ${density === 'critical' ? 'var(--danger-color)' : density === 'high' ? 'var(--warning-color)' : 'var(--primary-color)'}; color: #000; padding: 4px 8px; border-radius: 4px; font-weight: bold;">${density.toUpperCase()}</span></p>
-        <p><strong>Status:</strong> ${sanitizeAndFormat(status)}</p>
-      </div>
-    `;
-    showInfoModal(`🔍 Stand Information`, content);
+
+    const wrapper = document.createElement('div');
+    wrapper.style.display = 'flex';
+    wrapper.style.flexDirection = 'column';
+    wrapper.style.gap = '12px';
+    wrapper.style.fontSize = '0.95rem';
+
+    const p1 = document.createElement('p');
+    const s1 = document.createElement('strong');
+    s1.textContent = 'Stand: ';
+    p1.appendChild(s1);
+    p1.appendChild(document.createTextNode(stand));
+    wrapper.appendChild(p1);
+
+    const p2 = document.createElement('p');
+    const s2 = document.createElement('strong');
+    s2.textContent = 'Crowd Density: ';
+    p2.appendChild(s2);
+    const badge = document.createElement('span');
+    badge.className = 'badge';
+    badge.style.background = density === 'critical' ? 'var(--danger-color)' : density === 'high' ? 'var(--warning-color)' : 'var(--primary-color)';
+    badge.style.color = '#000';
+    badge.style.padding = '4px 8px';
+    badge.style.borderRadius = '4px';
+    badge.style.fontWeight = 'bold';
+    badge.textContent = density.toUpperCase();
+    p2.appendChild(badge);
+    wrapper.appendChild(p2);
+
+    const p3 = document.createElement('p');
+    const s3 = document.createElement('strong');
+    s3.textContent = 'Status: ';
+    p3.appendChild(s3);
+    p3.appendChild(document.createTextNode(status));
+    wrapper.appendChild(p3);
+
+    showInfoModal(`🔍 Stand Information`, wrapper);
   };
 
   const showGateDetails = (gate) => {
@@ -1390,14 +1550,40 @@ window.StadiumPulse = (() => {
     highlightSVGElement('map-gate-' + gateLetter);
     const wait = State.stadiumState.gates[gate] || 5;
     const status = wait > 30 ? 'CRITICAL - Re-routing advised' : 'Normal wait';
-    const content = `
-      <div style="display: flex; flex-direction: column; gap: 12px; font-size: 0.95rem;">
-        <p><strong>Gate:</strong> ${sanitizeAndFormat(gate)}</p>
-        <p><strong>Wait Time:</strong> <span style="font-size: 1.1rem; font-weight: bold; color: ${wait > 30 ? 'var(--danger-color)' : wait > 15 ? 'var(--warning-color)' : 'var(--primary-color)'}">${wait} minutes</span></p>
-        <p><strong>Status:</strong> ${sanitizeAndFormat(status)}</p>
-      </div>
-    `;
-    showInfoModal(`🔍 Gate Information`, content);
+
+    const wrapper = document.createElement('div');
+    wrapper.style.display = 'flex';
+    wrapper.style.flexDirection = 'column';
+    wrapper.style.gap = '12px';
+    wrapper.style.fontSize = '0.95rem';
+
+    const p1 = document.createElement('p');
+    const s1 = document.createElement('strong');
+    s1.textContent = 'Gate: ';
+    p1.appendChild(s1);
+    p1.appendChild(document.createTextNode(gate));
+    wrapper.appendChild(p1);
+
+    const p2 = document.createElement('p');
+    const s2 = document.createElement('strong');
+    s2.textContent = 'Wait Time: ';
+    p2.appendChild(s2);
+    const valSpan = document.createElement('span');
+    valSpan.style.fontSize = '1.1rem';
+    valSpan.style.fontWeight = 'bold';
+    valSpan.style.color = wait > 30 ? 'var(--danger-color)' : wait > 15 ? 'var(--warning-color)' : 'var(--primary-color)';
+    valSpan.textContent = `${wait} minutes`;
+    p2.appendChild(valSpan);
+    wrapper.appendChild(p2);
+
+    const p3 = document.createElement('p');
+    const s3 = document.createElement('strong');
+    s3.textContent = 'Status: ';
+    p3.appendChild(s3);
+    p3.appendChild(document.createTextNode(status));
+    wrapper.appendChild(p3);
+
+    showInfoModal(`🔍 Gate Information`, wrapper);
   };
 
   // Bootstrap Init

@@ -1001,3 +1001,11 @@ h2 {
   outline-offset: 3px !important;
   box-shadow: 0 0 12px rgba(0, 230, 118, 0.4) !important;
 }
+
+.map-stand:focus-visible,
+.map-gate:focus-visible {
+  stroke: var(--primary-color) !important;
+  stroke-width: 4px !important;
+  outline: none !important;
+  filter: drop-shadow(0 0 8px var(--primary-color)) !important;
+}
