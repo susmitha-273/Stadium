@@ -950,3 +950,47 @@ h2 {
 .chat-window.minimized .chat-form {
   display: none !important;
 }
+
+/* Green Fan Challenge Gamified Badges */
+.eco-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.badge-pill {
+  background: linear-gradient(135deg, rgba(0, 230, 118, 0.15) 0%, rgba(41, 121, 255, 0.15) 100%);
+  border: 1px solid rgba(0, 230, 118, 0.3);
+  color: var(--text-main);
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  box-shadow: 0 4px 10px rgba(0, 230, 118, 0.05);
+  animation: badgeUnlock 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) both;
+}
+
+@keyframes badgeUnlock {
+  0% { transform: scale(0.3); opacity: 0; filter: brightness(2); }
+  70% { transform: scale(1.1); filter: brightness(1.2); }
+  100% { transform: scale(1); opacity: 1; filter: brightness(1); }
+}
+
+/* Highlights for SVG elements */
+.map-stand.highlighted {
+  filter: drop-shadow(0 0 12px var(--primary-color)) brightness(1.4);
+  stroke: var(--primary-color) !important;
+  stroke-width: 4px !important;
+  transition: all 0.3s ease;
+}
+
+.map-gate.highlighted {
+  filter: drop-shadow(0 0 12px var(--accent-color)) brightness(1.4);
+  stroke: var(--accent-color) !important;
+  stroke-width: 5px !important;
+  transition: all 0.3s ease;
+}

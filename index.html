@@ -28,17 +28,17 @@
       </div>
 
       <!-- Stakeholder Mode Switcher -->
-      <div class="view-switcher-panel">
-        <button id="view-btn-fan" class="view-btn active" onclick="StadiumPulse.switchView('fan')">
+      <div class="view-switcher-panel" role="tablist" aria-label="Dashboard views">
+        <button id="view-btn-fan" class="view-btn active" role="tab" aria-selected="true" aria-controls="fan-view" onclick="StadiumPulse.switchView('fan')">
           ⚽ Fan Portal
         </button>
-        <button id="view-btn-staff" class="view-btn" onclick="StadiumPulse.switchView('staff')">
+        <button id="view-btn-staff" class="view-btn" role="tab" aria-selected="false" aria-controls="staff-view" onclick="StadiumPulse.switchView('staff')">
           📋 Staff & Volunteer Hub
         </button>
-        <button id="view-btn-ops" class="view-btn" onclick="StadiumPulse.switchView('ops')">
+        <button id="view-btn-ops" class="view-btn" role="tab" aria-selected="false" aria-controls="ops-view" onclick="StadiumPulse.switchView('ops')">
           🚨 Ops Command Center
         </button>
-        <button id="settings-btn" class="settings-toggle-btn" title="Open API Key Settings">
+        <button id="settings-btn" class="settings-toggle-btn" title="Open API Key Settings" aria-label="Open API Key Settings">
           ⚙️
         </button>
       </div>
@@ -51,7 +51,7 @@
     </header>
 
     <!-- Global Operations Notification Bar (Visible across views if there's a crisis) -->
-    <div id="global-alert-bar" class="alert warning hidden"></div>
+    <div id="global-alert-bar" class="alert warning hidden" role="alert" aria-live="assertive"></div>
 
     <!-- ==========================================
          VIEW 1: FAN EXPERIENCE PORTAL
@@ -65,7 +65,7 @@
             <h2>🚇 Smart Transit & Shuttles</h2>
             <p class="subtitle" style="margin-bottom: 12px;">Real-time shuttle times and transit delays near the stadium.</p>
             
-            <div class="transit-grid" id="fan-transit-list">
+            <div class="transit-grid" id="fan-transit-list" role="region" aria-label="Transit Schedules Status" aria-live="polite">
               <!-- Rendered via JavaScript -->
             </div>
 
@@ -79,7 +79,7 @@
               </select>
             </div>
             <button class="btn primary-btn" onclick="StadiumPulse.calculateTransitRoute()">Calculate AI Route</button>
-            <div id="route-output-box" class="alert success hidden" style="margin-top: 12px; font-size: 0.85rem;"></div>
+            <div id="route-output-box" class="alert success hidden" role="status" aria-live="polite" style="margin-top: 12px; font-size: 0.85rem;"></div>
           </div>
 
           <!-- Sustainability Footprint -->
@@ -90,12 +90,20 @@
             <div class="eco-dashboard">
               <div class="eco-metric">
                 <p class="subtitle">Carbon Saved</p>
-                <div class="eco-val" id="eco-carbon-saved">0.0 kg</div>
+                <div class="eco-val" id="eco-carbon-saved" aria-live="polite">0.0 kg</div>
               </div>
               <div class="eco-metric">
                 <p class="subtitle">Green Points</p>
-                <div class="eco-val" id="eco-green-points">0</div>
+                <div class="eco-val" id="eco-green-points" aria-live="polite">0</div>
               </div>
+            </div>
+
+            <div class="eco-progress-container" style="margin-top: 12px; background: rgba(255,255,255,0.05); border-radius: 8px; overflow: hidden; height: 10px; border: 1px solid rgba(255,255,255,0.08);">
+              <div id="eco-progress-bar" style="background: var(--primary-color); width: 0%; height: 100%; transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1); box-shadow: 0 0 10px var(--primary-glow);"></div>
+            </div>
+            <div style="display: flex; justify-content: space-between; font-size: 0.8rem; color: var(--text-muted); margin-top: 4px;">
+              <span>Level Progress</span>
+              <span id="eco-level-text">Level 1 (0 / 35 pts)</span>
             </div>
 
             <div style="margin-top: 16px; display: flex; flex-direction: column; gap: 8px;">
@@ -110,7 +118,7 @@
               </label>
             </div>
 
-            <div class="eco-badges" id="eco-badges-container">
+            <div class="eco-badges" id="eco-badges-container" role="region" aria-label="Sustainability Badges" aria-live="polite">
               <!-- Rendered via JavaScript -->
             </div>
           </div>
@@ -157,7 +165,7 @@
             <button type="submit" class="btn primary-btn" style="width: 100%;">Compute Wayfinding Route</button>
           </form>
 
-          <div id="wayfinding-result" class="alert success hidden" style="flex: 1; flex-direction: column; align-items: flex-start; gap: 8px; margin-top: 8px;">
+          <div id="wayfinding-result" class="alert success hidden" role="status" aria-live="polite" style="flex: 1; flex-direction: column; align-items: flex-start; gap: 8px; margin-top: 8px;">
             <strong id="wayfinding-route-title">Computed Route:</strong>
             <div id="wayfinding-route-steps" style="font-size: 0.9rem; line-height: 1.4; color: var(--text-main);"></div>
           </div>
@@ -250,7 +258,7 @@
 
             <button class="btn secondary-btn" style="width: 100%;" onclick="StadiumPulse.generateAnnouncement()">Generate Announcement Text</button>
 
-            <div id="announcement-output-box" class="alert success hidden" style="margin-top: 12px; flex-direction: column; align-items: flex-start; gap: 8px;">
+            <div id="announcement-output-box" class="alert success hidden" role="status" aria-live="polite" style="margin-top: 12px; flex-direction: column; align-items: flex-start; gap: 8px;">
               <strong>Generated Announcement:</strong>
               <blockquote id="announcement-text" style="font-size: 0.95rem; border-left: 3px solid var(--accent-color); padding-left: 10px; margin-top: 4px; font-style: italic; color: var(--text-main); width: 100%;"></blockquote>
             </div>
@@ -262,7 +270,7 @@
           <h2>📋 Active Incident Dispatch Queue</h2>
           <p class="subtitle" style="margin-bottom: 16px;">Real-time queue managed by the AI Operations Dispatcher.</p>
 
-          <div class="incident-list" id="staff-incident-list">
+          <div class="incident-list" id="staff-incident-list" role="region" aria-label="Incident dispatch queue" aria-live="polite">
             <!-- Populated dynamically via JS -->
             <p class="empty-state">No incidents logged currently. Stadium operations normal.</p>
           </div>
@@ -284,27 +292,27 @@
             <svg class="map-svg" viewBox="0 0 400 400" id="stadium-svg-map" width="400" height="400">
               <!-- Outer Ring (Gates) -->
               <!-- Gate A (North) -->
-              <line x1="200" y1="20" x2="200" y2="40" class="map-gate" id="map-gate-A" onclick="StadiumPulse.showGateDetails('Gate A')" />
+              <line x1="200" y1="20" x2="200" y2="40" class="map-gate" id="map-gate-A" role="button" tabindex="0" aria-label="Gate A" onclick="StadiumPulse.showGateDetails('Gate A')" />
               <!-- Gate B (East) -->
-              <line x1="380" y1="200" x2="360" y2="200" class="map-gate" id="map-gate-B" onclick="StadiumPulse.showGateDetails('Gate B')" />
+              <line x1="380" y1="200" x2="360" y2="200" class="map-gate" id="map-gate-B" role="button" tabindex="0" aria-label="Gate B" onclick="StadiumPulse.showGateDetails('Gate B')" />
               <!-- Gate C (South) -->
-              <line x1="200" y1="380" x2="200" y2="360" class="map-gate" id="map-gate-C" onclick="StadiumPulse.showGateDetails('Gate C')" />
+              <line x1="200" y1="380" x2="200" y2="360" class="map-gate" id="map-gate-C" role="button" tabindex="0" aria-label="Gate C" onclick="StadiumPulse.showGateDetails('Gate C')" />
               <!-- Gate D (West) -->
-              <line x1="20" y1="200" x2="40" y2="200" class="map-gate" id="map-gate-D" onclick="StadiumPulse.showGateDetails('Gate D')" />
+              <line x1="20" y1="200" x2="40" y2="200" class="map-gate" id="map-gate-D" role="button" tabindex="0" aria-label="Gate D" onclick="StadiumPulse.showGateDetails('Gate D')" />
               <!-- Gate E (VIP) -->
-              <line x1="80" y1="80" x2="100" y2="100" class="map-gate" id="map-gate-E" onclick="StadiumPulse.showGateDetails('Gate E')" />
+              <line x1="80" y1="80" x2="100" y2="100" class="map-gate" id="map-gate-E" role="button" tabindex="0" aria-label="Gate E (VIP North)" onclick="StadiumPulse.showGateDetails('Gate E')" />
               <!-- Gate F (Accessibility) -->
-              <line x1="320" y1="320" x2="300" y2="300" class="map-gate" id="map-gate-F" onclick="StadiumPulse.showGateDetails('Gate F')" />
+              <line x1="320" y1="320" x2="300" y2="300" class="map-gate" id="map-gate-F" role="button" tabindex="0" aria-label="Gate F (Accessibility Entry)" onclick="StadiumPulse.showGateDetails('Gate F')" />
 
               <!-- Outer Stand Sections -->
               <!-- Stand A (North stands) -->
-              <path d="M 100 100 A 141.4 141.4 0 0 1 300 100 L 270 130 A 99 99 0 0 0 130 130 Z" class="map-stand level-low" id="map-stand-A" onclick="StadiumPulse.showStandDetails('Stand A')" />
+              <path d="M 100 100 A 141.4 141.4 0 0 1 300 100 L 270 130 A 99 99 0 0 0 130 130 Z" class="map-stand level-low" id="map-stand-A" role="button" tabindex="0" aria-label="Stand A (North stands)" onclick="StadiumPulse.showStandDetails('Stand A')" />
               <!-- Stand B (East stands) -->
-              <path d="M 300 100 A 141.4 141.4 0 0 1 300 300 L 270 270 A 99 99 0 0 0 270 130 Z" class="map-stand level-low" id="map-stand-B" onclick="StadiumPulse.showStandDetails('Stand B')" />
+              <path d="M 300 100 A 141.4 141.4 0 0 1 300 300 L 270 270 A 99 99 0 0 0 270 130 Z" class="map-stand level-low" id="map-stand-B" role="button" tabindex="0" aria-label="Stand B (East stands)" onclick="StadiumPulse.showStandDetails('Stand B')" />
               <!-- Stand C (South stands) -->
-              <path d="M 300 300 A 141.4 141.4 0 0 1 100 300 L 130 270 A 99 99 0 0 0 270 270 Z" class="map-stand level-low" id="map-stand-C" onclick="StadiumPulse.showStandDetails('Stand C')" />
+              <path d="M 300 300 A 141.4 141.4 0 0 1 100 300 L 130 270 A 99 99 0 0 0 270 270 Z" class="map-stand level-low" id="map-stand-C" role="button" tabindex="0" aria-label="Stand C (South stands)" onclick="StadiumPulse.showStandDetails('Stand C')" />
               <!-- Stand D (West stands) -->
-              <path d="M 100 300 A 141.4 141.4 0 0 1 100 100 L 130 130 A 99 99 0 0 0 130 270 Z" class="map-stand level-low" id="map-stand-D" onclick="StadiumPulse.showStandDetails('Stand D')" />
+              <path d="M 100 300 A 141.4 141.4 0 0 1 100 100 L 130 130 A 99 99 0 0 0 130 270 Z" class="map-stand level-low" id="map-stand-D" role="button" tabindex="0" aria-label="Stand D (West stands)" onclick="StadiumPulse.showStandDetails('Stand D')" />
 
               <!-- Inner Ring Pitch -->
               <rect x="140" y="140" width="120" height="120" rx="10" fill="#1b263b" stroke="var(--primary-color)" stroke-width="1.5" />
@@ -368,12 +376,12 @@
             <h2>💡 GenAI Live Decision Advisor</h2>
             <p class="subtitle">AI Co-Pilot recommendations based on current real-time metrics.</p>
 
-            <div id="ops-alerts-board" style="display: flex; flex-direction: column; gap: 8px;">
+            <div id="ops-alerts-board" role="region" aria-label="Live operations alerts" aria-live="polite" style="display: flex; flex-direction: column; gap: 8px;">
               <!-- Warnings updated here -->
             </div>
 
             <div class="incident-dispatch" style="flex: 1; overflow-y: auto; background: rgba(0, 0, 0, 0.2); border-left-color: var(--danger-color); padding: 12px;">
-              <div id="ops-co-pilot-advice" style="font-size: 0.9rem; line-height: 1.45; color: var(--text-main);">
+              <div id="ops-co-pilot-advice" role="status" aria-live="polite" style="font-size: 0.9rem; line-height: 1.45; color: var(--text-main);">
                 Select normal operations or trigger a scenario to view real-time co-pilot decision support advice.
               </div>
             </div>
@@ -383,11 +391,11 @@
     </section>
 
     <!-- Settings Modal -->
-    <div id="settings-modal" class="modal-backdrop hidden">
+    <div id="settings-modal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="settings-title">
       <div class="glass-panel modal-content">
         <div class="modal-header">
-          <h2 style="margin-bottom: 0; border: none; padding: 0;">Settings</h2>
-          <button class="modal-close-btn" id="settings-close-btn">✖</button>
+          <h2 id="settings-title" style="margin-bottom: 0; border: none; padding: 0;">Settings</h2>
+          <button class="modal-close-btn" id="settings-close-btn" aria-label="Close settings">✖</button>
         </div>
         <div class="modal-body">
           <div class="input-group">
@@ -402,31 +410,44 @@
       </div>
     </div>
 
+    <!-- Dynamic Info Modal (Replacing alert popups) -->
+    <div id="info-modal" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="info-modal-title">
+      <div class="glass-panel modal-content">
+        <div class="modal-header">
+          <h2 id="info-modal-title" style="margin-bottom: 0; border: none; padding: 0;">Info</h2>
+          <button class="modal-close-btn" id="info-modal-close-btn" aria-label="Close details">✖</button>
+        </div>
+        <div class="modal-body" id="info-modal-body">
+          <!-- Dynamically populated -->
+        </div>
+      </div>
+    </div>
+
     <!-- ==========================================
          FLOATING AI ASSISTANT WIDGET
          ========================================== -->
-    <button id="chat-toggle-btn" class="chat-toggle-btn" onclick="StadiumPulse.toggleChat()">
+    <button id="chat-toggle-btn" class="chat-toggle-btn" aria-haspopup="dialog" aria-expanded="false" aria-controls="chat-window" onclick="StadiumPulse.toggleChat()">
       💬 AI Assistant
     </button>
 
-    <div id="chat-window" class="glass-panel chat-window hidden">
+    <div id="chat-window" class="glass-panel chat-window hidden" role="dialog" aria-modal="false" aria-labelledby="chat-role-title">
       <div class="chat-header" id="chat-header-drag" style="cursor: move; user-select: none;">
         <div>
           <h3 id="chat-role-title" style="pointer-events: none;">⚽ Fan Concierge</h3>
           <span id="chat-mode-badge" class="chat-header-status" style="pointer-events: none;">Zero-Setup Mock Mode</span>
         </div>
         <div style="display: flex; gap: 8px; align-items: center;">
-          <button id="chat-minimize-btn" class="chat-close-btn" onclick="StadiumPulse.toggleMinimizeChat(event)" title="Minimize chat" style="font-size: 0.95rem;">➖</button>
-          <button id="chat-close-btn" class="chat-close-btn" onclick="StadiumPulse.toggleChat()" title="Close chat">✖</button>
+          <button id="chat-minimize-btn" class="chat-close-btn" onclick="StadiumPulse.toggleMinimizeChat(event)" title="Minimize chat" aria-label="Minimize chat" style="font-size: 0.95rem;">➖</button>
+          <button id="chat-close-btn" class="chat-close-btn" onclick="StadiumPulse.toggleChat()" title="Close chat" aria-label="Close chat">✖</button>
         </div>
       </div>
 
-      <div id="chat-messages" class="chat-messages">
+      <div id="chat-messages" class="chat-messages" aria-live="polite" role="log" aria-label="AI Assistant messages">
         <!-- Prefilled greetings based on context -->
       </div>
 
       <form id="chat-form" class="chat-form" onsubmit="StadiumPulse.handleChatSubmit(event)">
-        <input type="text" id="chat-input" placeholder="Ask about gates, food, restrooms, or incident dispatch..." required autocomplete="off">
+        <input type="text" id="chat-input" placeholder="Ask about gates, food, restrooms, or incident dispatch..." aria-label="Chat input field" required autocomplete="off">
         <button type="submit" class="btn primary-btn chat-send-btn">Send</button>
       </form>
     </div>

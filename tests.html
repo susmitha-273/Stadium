@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>StadiumPulse 2026 - Test Automation Hub</title>
+  
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  
+  <style>
+    :root {
+      --bg-primary: #070d19;
+      --bg-gradient: linear-gradient(135deg, #070d19 0%, #0d1b2a 100%);
+      --panel-bg: rgba(16, 24, 48, 0.65);
+      --panel-border: rgba(255, 255, 255, 0.08);
+      --primary-color: #00e676; /* Turf Green */
+      --accent-color: #2979ff; /* Electric Blue */
+      --danger-color: #ff1744; /* Hot Red */
+      --text-main: #f8f9fa;
+      --text-muted: #8d99ae;
+      --border-radius: 16px;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: 'Outfit', sans-serif;
+    }
+
+    body {
+      background: var(--bg-gradient);
+      color: var(--text-main);
+      min-height: 100vh;
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+    }
+
+    .container {
+      max-width: 1400px;
+      margin: 0 auto;
+      width: 100%;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 24px;
+      height: calc(100vh - 48px);
+    }
+
+    .glass-panel {
+      background: var(--panel-bg);
+      backdrop-filter: blur(16px);
+      border: 1px solid var(--panel-border);
+      border-radius: var(--border-radius);
+      padding: 24px;
+      box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    header {
+      margin-bottom: 20px;
+    }
+
+    h1 {
+      font-size: 1.8rem;
+      font-weight: 700;
+      background: linear-gradient(90deg, #00e676, #2979ff);
+      -webkit-background-clip: text;
+      background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .subtitle {
+      color: var(--text-muted);
+      font-size: 0.9rem;
+      margin-top: 4px;
+    }
+
+    /* Test Results Dashboard */
+    .dashboard-summary {
+      display: flex;
+      gap: 16px;
+      margin-bottom: 20px;
+    }
+
+    .metric-card {
+      flex: 1;
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      border-radius: 12px;
+      padding: 16px;
+      text-align: center;
+    }
+
+    .metric-val {
+      font-size: 1.8rem;
+      font-weight: 700;
+      margin-top: 4px;
+    }
+
+    .metric-val.passed { color: var(--primary-color); }
+    .metric-val.failed { color: var(--danger-color); }
+
+    .test-list {
+      flex: 1;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      padding-right: 4px;
+    }
+
+    .test-row {
+      background: rgba(255, 255, 255, 0.02);
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      border-radius: 8px;
+      padding: 12px 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      transition: all 0.2s ease;
+    }
+
+    .test-row:hover {
+      border-color: rgba(255, 255, 255, 0.1);
+      background: rgba(255, 255, 255, 0.04);
+    }
+
+    .test-info {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .test-category {
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      font-weight: 700;
+      color: var(--accent-color);
+      letter-spacing: 0.5px;
+    }
+
+    .test-name {
+      font-size: 0.95rem;
+      font-weight: 500;
+    }
+
+    .test-error {
+      font-size: 0.8rem;
+      color: var(--danger-color);
+      margin-top: 4px;
+      background: rgba(255, 23, 68, 0.08);
+      padding: 6px 10px;
+      border-radius: 4px;
+      border-left: 3px solid var(--danger-color);
+    }
+
+    .status-badge {
+      padding: 6px 12px;
+      border-radius: 20px;
+      font-size: 0.75rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .status-badge.pass {
+      background: rgba(0, 230, 118, 0.15);
+      color: var(--primary-color);
+      border: 1px solid rgba(0, 230, 118, 0.3);
+    }
+
+    .status-badge.fail {
+      background: rgba(255, 23, 68, 0.15);
+      color: var(--danger-color);
+      border: 1px solid rgba(255, 23, 68, 0.3);
+    }
+
+    /* Target Iframe Column */
+    .iframe-panel {
+      padding: 0;
+      border: 1px solid var(--panel-border);
+      border-radius: var(--border-radius);
+      background: #000;
+      position: relative;
+    }
+
+    iframe {
+      width: 100%;
+      height: 100%;
+      border: none;
+      border-radius: var(--border-radius);
+    }
+
+    .iframe-header {
+      background: rgba(16, 24, 48, 0.9);
+      border-bottom: 1px solid var(--panel-border);
+      padding: 12px 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      z-index: 10;
+    }
+
+    .btn {
+      padding: 10px 20px;
+      border-radius: 8px;
+      font-weight: 600;
+      cursor: pointer;
+      border: none;
+      font-size: 0.9rem;
+      background: var(--primary-color);
+      color: #070d19;
+      transition: all 0.2s ease;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .btn:hover {
+      background: #00c853;
+      transform: translateY(-1px);
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <!-- Left Column: Test Runner -->
+    <div class="glass-panel">
+      <header>
+        <h1>StadiumPulse 2026</h1>
+        <p class="subtitle">GenAI Operations Test Automation Dashboard</p>
+      </header>
+
+      <div class="dashboard-summary">
+        <div class="metric-card">
+          <div class="subtitle">Passed</div>
+          <div class="metric-val passed" id="passed-count">0</div>
+        </div>
+        <div class="metric-card">
+          <div class="subtitle">Failed</div>
+          <div class="metric-val failed" id="failed-count">0</div>
+        </div>
+        <div class="metric-card">
+          <div class="subtitle">Total Executed</div>
+          <div class="metric-val" id="total-count">0</div>
+        </div>
+        <div class="metric-card" style="display: flex; align-items: center; justify-content: center;">
+          <button class="btn" id="run-tests-btn" onclick="startTests()">Run Suite</button>
+        </div>
+      </div>
+
+      <div class="test-list" id="test-list-container">
+        <p style="text-align: center; color: var(--text-muted); margin-top: 40px; font-style: italic;">
+          Click "Run Suite" to execute test cases.
+        </p>
+      </div>
+    </div>
+
+    <!-- Right Column: Live App Mock -->
+    <div class="glass-panel iframe-panel">
+      <div class="iframe-header">
+        <span style="font-size: 0.85rem; font-weight: 600; color: var(--text-muted);">
+          🌐 Live Test Target sandbox (index.html)
+        </span>
+      </div>
+      <div style="height: 100%; padding-top: 43px;">
+        <iframe id="test-iframe" src="index.html"></iframe>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const startTests = () => {
+      const iframe = document.getElementById('test-iframe');
+      const container = document.getElementById('test-list-container');
+      
+      container.innerHTML = '<p style="text-align: center; color: var(--text-muted); margin-top: 40px; font-style: italic;">Running test runner pipeline...</p>';
+      
+      // Inject tests.js script directly into iframe context so it runs natively there
+      const contentDoc = iframe.contentDocument || iframe.contentWindow.document;
+      
+      // Remove old script if exists
+      const oldScript = contentDoc.getElementById('test-suite-script');
+      if (oldScript) {
+        oldScript.remove();
+      }
+      
+      const scriptEl = contentDoc.createElement('script');
+      scriptEl.id = 'test-suite-script';
+      scriptEl.src = 'tests.js';
+      
+      scriptEl.onload = () => {
+        const TestSuite = iframe.contentWindow.TestSuite;
+        if (!TestSuite) {
+          container.innerHTML = '<p style="text-align: center; color: var(--danger-color); margin-top: 40px;">Failed to load TestSuite logic from tests.js.</p>';
+          return;
+        }
+
+        container.innerHTML = '';
+        
+        let passed = 0;
+        let failed = 0;
+        
+        TestSuite.runAll(
+          (category, name, pass, errorMsg) => {
+            const row = document.createElement('div');
+            row.className = 'test-row';
+            
+            const info = document.createElement('div');
+            info.className = 'test-info';
+            
+            const cat = document.createElement('span');
+            cat.className = 'test-category';
+            cat.textContent = category;
+            
+            const nm = document.createElement('span');
+            nm.className = 'test-name';
+            nm.textContent = name;
+            
+            info.appendChild(cat);
+            info.appendChild(nm);
+            
+            if (!pass && errorMsg) {
+              const err = document.createElement('div');
+              err.className = 'test-error';
+              err.textContent = `❌ Assertion Error: ${errorMsg}`;
+              info.appendChild(err);
+            }
+            
+            const badge = document.createElement('span');
+            badge.className = `status-badge ${pass ? 'pass' : 'fail'}`;
+            badge.textContent = pass ? 'Pass' : 'Fail';
+            
+            row.appendChild(info);
+            row.appendChild(badge);
+            container.appendChild(row);
+          },
+          (pCount, fCount, total) => {
+            document.getElementById('passed-count').textContent = pCount;
+            document.getElementById('failed-count').textContent = fCount;
+            document.getElementById('total-count').textContent = total;
+          }
+        );
+      };
+      
+      contentDoc.body.appendChild(scriptEl);
+    };
+
+    // Auto-run tests after iframe is loaded
+    document.getElementById('test-iframe').addEventListener('load', () => {
+      setTimeout(startTests, 1000);
+    });
+  </script>
+</body>
+</html>

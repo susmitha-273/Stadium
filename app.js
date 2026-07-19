@@ -7,11 +7,72 @@ const StadiumPulse = (() => {
   'use strict';
 
   // ==========================================
+  // 0. UTILITIES & SAFETY
+  // ==========================================
+  const sanitizeAndFormat = (text) => {
+    if (!text) return '';
+    return text
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;')
+      .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+      .replace(/\n/g, '<br>');
+  };
+
+  const showInfoModal = (title, contentHTML) => {
+    UI.elements.infoModalTitle.textContent = title;
+    UI.elements.infoModalBody.innerHTML = contentHTML;
+    UI.elements.infoModal.classList.remove('hidden');
+  };
+
+  const highlightSVGElement = (id) => {
+    document.querySelectorAll('.map-stand, .map-gate').forEach(el => {
+      el.classList.remove('highlighted');
+    });
+
+    const target = document.getElementById(id);
+    if (target) {
+      target.classList.add('highlighted');
+      setTimeout(() => {
+        target.classList.remove('highlighted');
+      }, 5000);
+    }
+  };
+
+  const highlightRoute = (gateL, standL) => {
+    document.querySelectorAll('.map-stand, .map-gate').forEach(el => {
+      el.classList.remove('highlighted');
+    });
+
+    if (gateL) {
+      const gateEl = document.getElementById('map-gate-' + gateL);
+      if (gateEl) gateEl.classList.add('highlighted');
+    }
+    if (standL) {
+      const standEl = document.getElementById('map-stand-' + standL);
+      if (standEl) standEl.classList.add('highlighted');
+    }
+
+    setTimeout(() => {
+      if (gateL) {
+        const gateEl = document.getElementById('map-gate-' + gateL);
+        if (gateEl) gateEl.classList.remove('highlighted');
+      }
+      if (standL) {
+        const standEl = document.getElementById('map-stand-' + standL);
+        if (standEl) standEl.classList.remove('highlighted');
+      }
+    }, 6000);
+  };
+
+  // ==========================================
   // 1. STATE & DATA STORAGE
   // ==========================================
   const State = {
     activeView: 'fan',
-    apiKey: localStorage.getItem('stadiumpulse_api_key') || 'AQ.Ab8RN6KH2Tkxa4A5yuHqOuqUFOcWRe4Gc0GQorOrYPFsk_A9gg',
+    apiKey: localStorage.getItem('stadiumpulse_api_key') || '',
     ecoPoints: parseInt(localStorage.getItem('stadiumpulse_eco_points')) || 0,
     ecoCarbonSaved: parseFloat(localStorage.getItem('stadiumpulse_eco_carbon')) || 0.0,
     
@@ -424,6 +485,12 @@ const StadiumPulse = (() => {
         settingsClose: document.getElementById('settings-close-btn'),
         settingsKeyInput: document.getElementById('settings-api-key'),
         
+        // Info Modal
+        infoModal: document.getElementById('info-modal'),
+        infoModalTitle: document.getElementById('info-modal-title'),
+        infoModalBody: document.getElementById('info-modal-body'),
+        infoModalClose: document.getElementById('info-modal-close-btn'),
+        
         // Chatbot Panel
         chatToggle: document.getElementById('chat-toggle-btn'),
         chatWindow: document.getElementById('chat-window'),
@@ -436,6 +503,7 @@ const StadiumPulse = (() => {
 
       this.initClock();
       this.initEvents();
+      this.initA11yEvents();
       this.renderTransitSchedules();
       this.renderIncidents();
       this.renderEcoDashboard();
@@ -511,10 +579,28 @@ const StadiumPulse = (() => {
       this.elements.settingsClose.addEventListener('click', () => {
         this.elements.settingsModal.classList.add('hidden');
       });
+      this.elements.infoModalClose.addEventListener('click', () => {
+        this.elements.infoModal.classList.add('hidden');
+      });
       window.addEventListener('click', (e) => {
         if (e.target === this.elements.settingsModal) {
           this.elements.settingsModal.classList.add('hidden');
         }
+        if (e.target === this.elements.infoModal) {
+          this.elements.infoModal.classList.add('hidden');
+        }
+      });
+    },
+
+    initA11yEvents() {
+      // Add keyboard support to interactive SVG map elements
+      document.querySelectorAll('.map-stand, .map-gate').forEach(el => {
+        el.addEventListener('keydown', (e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            el.click();
+          }
+        });
       });
     },
 
@@ -648,6 +734,18 @@ const StadiumPulse = (() => {
       this.elements.carbonSavedText.textContent = `${State.ecoCarbonSaved.toFixed(1)} kg`;
       this.elements.greenPointsText.textContent = State.ecoPoints;
 
+      // Update progress bar and level text
+      const percentage = (State.ecoPoints / 35) * 100;
+      const bar = document.getElementById('eco-progress-bar');
+      const lvlText = document.getElementById('eco-level-text');
+      if (bar) bar.style.width = `${percentage}%`;
+      if (lvlText) {
+        let level = 1;
+        if (State.ecoPoints >= 35) level = 3;
+        else if (State.ecoPoints >= 25) level = 2;
+        lvlText.textContent = `Level ${level} (${State.ecoPoints} / 35 pts)`;
+      }
+
       // Determine badge unlocks
       this.elements.badgesContainer.innerHTML = '';
       if (State.ecoPoints >= 10) {
@@ -661,7 +759,7 @@ const StadiumPulse = (() => {
       }
       
       if (State.ecoPoints === 0) {
-        this.elements.badgesContainer.innerHTML = '<span style="font-size: 0.85rem; color: var(--text-muted); italic">Complete challenge items to earn tournament badges!</span>';
+        this.elements.badgesContainer.innerHTML = '<span style="font-size: 0.85rem; color: var(--text-muted); font-style: italic;">Complete challenge items to earn tournament badges!</span>';
       }
     },
 
@@ -820,12 +918,13 @@ const StadiumPulse = (() => {
     localStorage.setItem('stadiumpulse_api_key', key);
     UI.elements.settingsModal.classList.add('hidden');
     UI.resetChatGreeting();
-    alert('Configuration saved! AI interface refreshed.');
+    showInfoModal('⚙️ Configuration Saved', '<p>AI interface has been successfully refreshed with your new settings.</p>');
   };
 
   // Toggle Chat Popup
   const toggleChat = () => {
-    UI.elements.chatWindow.classList.toggle('hidden');
+    const isHidden = UI.elements.chatWindow.classList.toggle('hidden');
+    UI.elements.chatToggle.setAttribute('aria-expanded', !isHidden);
   };
 
   // Toggle Chat Minimize State
@@ -877,7 +976,7 @@ const StadiumPulse = (() => {
     const aiRes = await GenAIService.callAI(prompt, systemPrompt);
     
     UI.elements.routeOutput.className = 'alert success';
-    UI.elements.routeOutput.innerHTML = `<strong>AI Transit Advice:</strong><br>${aiRes.content}`;
+    UI.elements.routeOutput.innerHTML = `<strong>AI Transit Advice:</strong><br>${sanitizeAndFormat(aiRes.content)}`;
   };
 
   // Wayfinder Engine
@@ -899,6 +998,11 @@ const StadiumPulse = (() => {
     UI.elements.wayfinderResult.className = 'alert warning';
     UI.elements.wayfinderSteps.textContent = 'Computing optimal path avoiding high density...';
 
+    // Highlight route on map
+    let gateL = fromVal.includes("Gate A") ? "A" : fromVal.includes("Gate B") ? "B" : fromVal.includes("Gate C") ? "C" : fromVal.includes("Gate D") ? "D" : fromVal.includes("Gate E") ? "E" : fromVal.includes("Gate F") ? "F" : "";
+    let standL = toVal.includes("Stand A") ? "A" : toVal.includes("Stand B") ? "B" : toVal.includes("Stand C") ? "C" : toVal.includes("Stand D") ? "D" : "";
+    highlightRoute(gateL, standL);
+
     const aiRes = await GenAIService.callAI(prompt, systemPrompt);
     
     UI.elements.wayfinderResult.className = 'alert success';
@@ -910,7 +1014,7 @@ const StadiumPulse = (() => {
   const generateAnnouncement = async () => {
     const topic = UI.elements.annTopic.value.trim();
     if (!topic) {
-      alert('Please input a topic or reference incident for the announcement.');
+      showInfoModal('⚠️ Input Required', '<p>Please input a topic or reference incident for the announcement.</p>');
       return;
     }
     const lang = UI.elements.annLang.value;
@@ -982,7 +1086,7 @@ const StadiumPulse = (() => {
     UI.elements.incidentForm.reset();
 
     // Alert completion
-    alert(`Incident successfully logged and prioritized by AI as ${priority}! Dispatch team notified.`);
+    showInfoModal('⚠️ Incident Logged', `<p>Incident successfully logged and prioritized by AI as <strong>${sanitizeAndFormat(priority)}</strong>.</p><p>Operational team has been dispatched.</p>`);
   };
 
   // Resolve incident
@@ -1052,7 +1156,7 @@ const StadiumPulse = (() => {
     let systemPrompt = "You are the Stadium Operations AI Co-Pilot. Write a highly tactical load-balancing plan based on the scenario metrics provided. Provide 3 specific actions using bold lists. Limit response to 120 words.";
     
     const aiRes = await GenAIService.callAI(copilotPrompt, systemPrompt);
-    UI.elements.copilotAdvice.innerHTML = `<strong>CO-PILOT RESPONSE PLAN:</strong><br>${aiRes.content}`;
+    UI.elements.copilotAdvice.innerHTML = `<strong>CO-PILOT RESPONSE PLAN:</strong><br>${sanitizeAndFormat(aiRes.content)}`;
 
     // Update chatbot view if in ops mode currently
     if (State.activeView === 'ops') {
@@ -1117,13 +1221,33 @@ const StadiumPulse = (() => {
 
   // Map click triggers detail popups
   const showStandDetails = (stand) => {
+    const standLetter = stand.charAt(stand.length - 1);
+    highlightSVGElement('map-stand-' + standLetter);
     const density = State.stadiumState.stands[stand];
-    alert(`🔍 Stand Information:\nStand: ${stand}\nCrowd Density: ${density.toUpperCase()}\nStatus: ${density === 'critical' || density === 'high' ? 'Deploying crowd redirects' : 'Normal flow'}`);
+    const status = density === 'critical' || density === 'high' ? 'Deploying crowd redirects' : 'Normal flow';
+    const content = `
+      <div style="display: flex; flex-direction: column; gap: 12px; font-size: 0.95rem;">
+        <p><strong>Stand:</strong> ${sanitizeAndFormat(stand)}</p>
+        <p><strong>Crowd Density:</strong> <span class="badge" style="background: ${density === 'critical' ? 'var(--danger-color)' : density === 'high' ? 'var(--warning-color)' : 'var(--primary-color)'}; color: #000; padding: 4px 8px; border-radius: 4px; font-weight: bold;">${density.toUpperCase()}</span></p>
+        <p><strong>Status:</strong> ${sanitizeAndFormat(status)}</p>
+      </div>
+    `;
+    showInfoModal(`🔍 Stand Information`, content);
   };
 
   const showGateDetails = (gate) => {
+    const gateLetter = gate.charAt(gate.length - 1);
+    highlightSVGElement('map-gate-' + gateLetter);
     const wait = State.stadiumState.gates[gate] || 5;
-    alert(`🔍 Gate Information:\nGate: ${gate}\nWait Time: ${wait} minutes\nStatus: ${wait > 30 ? 'CRITICAL - Re-routing advised' : 'Normal wait'}`);
+    const status = wait > 30 ? 'CRITICAL - Re-routing advised' : 'Normal wait';
+    const content = `
+      <div style="display: flex; flex-direction: column; gap: 12px; font-size: 0.95rem;">
+        <p><strong>Gate:</strong> ${sanitizeAndFormat(gate)}</p>
+        <p><strong>Wait Time:</strong> <span style="font-size: 1.1rem; font-weight: bold; color: ${wait > 30 ? 'var(--danger-color)' : wait > 15 ? 'var(--warning-color)' : 'var(--primary-color)'}">${wait} minutes</span></p>
+        <p><strong>Status:</strong> ${sanitizeAndFormat(status)}</p>
+      </div>
+    `;
+    showInfoModal(`🔍 Gate Information`, content);
   };
 
   // Bootstrap Init
