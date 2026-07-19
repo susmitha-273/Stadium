@@ -3,7 +3,7 @@
  * Built with raw ES6 JavaScript and dynamic GenAI interfaces.
  */
 
-const StadiumPulse = (() => {
+window.StadiumPulse = (() => {
   'use strict';
 
   // ==========================================
@@ -316,6 +316,20 @@ const StadiumPulse = (() => {
           steps.push("1. Enter through your closest designated gate.");
         }
 
+        let targetStand = "Stand A";
+        let standLetter = "A";
+        if (cleanPrompt.includes("stand a")) { targetStand = "Stand A (North stands)"; standLetter = "A"; }
+        else if (cleanPrompt.includes("stand b")) { targetStand = "Stand B (East stands)"; standLetter = "B"; }
+        else if (cleanPrompt.includes("stand c")) { targetStand = "Stand C (South stands)"; standLetter = "C"; }
+        else if (cleanPrompt.includes("stand d")) { targetStand = "Stand D (West stands)"; standLetter = "D"; }
+
+        // Adaptive rerouting warning for congested zones
+        const targetStandKey = "Stand " + standLetter;
+        const currentDensity = State.stadiumState.stands[targetStandKey] || 'low';
+        if (currentDensity === 'critical' || currentDensity === 'high') {
+          steps.push(`⚠️ Stand ${standLetter} is reporting ${currentDensity.toUpperCase()} density. Redirect active: Avoid the main concourse bottleneck. Proceed via the outer perimeter bypass corridors.`);
+        }
+
         if (cleanPrompt.includes("restrooms")) {
           steps.push("2. Proceed to the main concourse level. Restrooms are located behind Sector 108 (Stand A) or Sector 120 (Stand D).");
           steps.push("3. Follow the blue overhead signage. Standard and accessible facilities are fully open.");
@@ -326,12 +340,6 @@ const StadiumPulse = (() => {
           steps.push("2. Follow the red cross floor markers along the south concourse wall.");
           steps.push("3. Check in at the medical counter located next to Gate C.");
         } else {
-          let targetStand = "Stand A";
-          if (cleanPrompt.includes("stand a")) targetStand = "Stand A (North stands)";
-          else if (cleanPrompt.includes("stand b")) targetStand = "Stand B (East stands)";
-          else if (cleanPrompt.includes("stand c")) targetStand = "Stand C (South stands)";
-          else if (cleanPrompt.includes("stand d")) targetStand = "Stand D (West stands)";
-          
           if (cleanPrompt.includes("wheelchair") || cleanPrompt.includes("accessible")) {
             steps.push(`2. Use Elevator Shaft 4 (West Concourse) or Shaft 2 (North Concourse) to bypass stairs.`);
             steps.push(`3. Follow wheelchair path markings to the designated accessible seating zone in ${targetStand}.`);
@@ -588,6 +596,88 @@ const StadiumPulse = (() => {
         }
         if (e.target === this.elements.infoModal) {
           this.elements.infoModal.classList.add('hidden');
+        }
+      });
+
+      // Switch view tabs
+      this.elements.btnFan.addEventListener('click', () => switchView('fan'));
+      this.elements.btnStaff.addEventListener('click', () => switchView('staff'));
+      this.elements.btnOps.addEventListener('click', () => switchView('ops'));
+
+      // Transit button
+      const transitBtn = document.getElementById('transit-calculate-btn');
+      if (transitBtn) {
+        transitBtn.addEventListener('click', calculateTransitRoute);
+      }
+
+      // Eco checkboxes
+      const ecoChecks = ['eco-check-transit', 'eco-check-recycle', 'eco-check-bottle'];
+      ecoChecks.forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.addEventListener('change', updateEcoScore);
+      });
+
+      // Wayfinding Form
+      if (this.elements.wayfinderForm) {
+        this.elements.wayfinderForm.addEventListener('submit', handleWayfinding);
+      }
+
+      // Incident Form
+      if (this.elements.incidentForm) {
+        this.elements.incidentForm.addEventListener('submit', handleLogIncident);
+      }
+
+      // Announcement button
+      const annBtn = document.getElementById('announcement-generate-btn');
+      if (annBtn) {
+        annBtn.addEventListener('click', generateAnnouncement);
+      }
+
+      // Settings Save button
+      const saveSettingsBtn = document.querySelector('#settings-modal .primary-btn');
+      if (saveSettingsBtn) {
+        saveSettingsBtn.addEventListener('click', saveSettings);
+      }
+
+      // Simulator buttons
+      const simButtons = {
+        'sim-btn-normal': 'normal',
+        'sim-btn-exit': 'exit',
+        'sim-btn-gate-failure': 'gate-failure',
+        'sim-btn-stand-concession': 'stand-concession'
+      };
+      Object.entries(simButtons).forEach(([id, scenario]) => {
+        const btn = document.getElementById(id);
+        if (btn) btn.addEventListener('click', () => triggerScenario(scenario));
+      });
+
+      // Chat toggles
+      if (this.elements.chatToggle) {
+        this.elements.chatToggle.addEventListener('click', toggleChat);
+      }
+      const chatClose = document.getElementById('chat-close-btn');
+      if (chatClose) {
+        chatClose.addEventListener('click', toggleChat);
+      }
+      const chatMin = document.getElementById('chat-minimize-btn');
+      if (chatMin) {
+        chatMin.addEventListener('click', toggleMinimizeChat);
+      }
+      if (this.elements.chatForm) {
+        this.elements.chatForm.addEventListener('submit', handleChatSubmit);
+      }
+
+      // SVG Map Elements click listeners
+      ['A', 'B', 'C', 'D', 'E', 'F'].forEach(letter => {
+        const gate = document.getElementById('map-gate-' + letter);
+        if (gate) {
+          gate.addEventListener('click', () => showGateDetails('Gate ' + letter));
+        }
+      });
+      ['A', 'B', 'C', 'D'].forEach(letter => {
+        const stand = document.getElementById('map-stand-' + letter);
+        if (stand) {
+          stand.addEventListener('click', () => showStandDetails('Stand ' + letter));
         }
       });
     },
@@ -955,138 +1045,188 @@ const StadiumPulse = (() => {
       co2 += 0.5;
     }
 
+    const oldBadges = [];
+    if (State.ecoPoints >= 10) oldBadges.push('Eco Spectator');
+    if (State.ecoPoints >= 25) oldBadges.push('Transit Champion');
+    if (State.ecoPoints >= 35) oldBadges.push('Zero-Waste Hero');
+
     State.ecoPoints = pts;
     State.ecoCarbonSaved = co2;
     localStorage.setItem('stadiumpulse_eco_points', pts);
     localStorage.setItem('stadiumpulse_eco_carbon', co2);
 
     UI.renderEcoDashboard();
+
+    const newBadges = [];
+    if (State.ecoPoints >= 10) newBadges.push('Eco Spectator');
+    if (State.ecoPoints >= 25) newBadges.push('Transit Champion');
+    if (State.ecoPoints >= 35) newBadges.push('Zero-Waste Hero');
+
+    const unlocked = newBadges.filter(b => !oldBadges.includes(b));
+    if (unlocked.length > 0) {
+      const content = `
+        <div style="text-align: center; display: flex; flex-direction: column; gap: 16px; padding: 8px;">
+          <div style="font-size: 4rem; animation: floatOrb 2s ease-in-out infinite; transform-origin: center;">🏆</div>
+          <h3>Green Badge Unlocked!</h3>
+          <p>Congratulations! You have earned the <strong>${sanitizeAndFormat(unlocked[0])}</strong> badge for your sustainable choices.</p>
+          <div style="margin: 12px auto; display: inline-block;" class="badge-pill">🏆 ${sanitizeAndFormat(unlocked[0])}</div>
+          <p style="font-size: 0.85rem; color: var(--text-muted);">Thank you for helping us make the 2026 World Cup green!</p>
+        </div>
+      `;
+      showInfoModal('🎉 Achievement Unlocked!', content);
+    }
   };
 
   // Calculate dynamic travel routing
   const calculateTransitRoute = async () => {
-    const mode = UI.elements.routeSelector.value;
-    let prompt = `Plan transit route and calculate eco-impact metrics for route option: ${mode}. Wait times: Transit = 4 min, Shuttle = 6 min (delays), Walk = clear, Rideshare = 20 min wait.`;
-    let systemPrompt = "You are the Stadium Transit Planner. Explain travel route directions, estimated time, and carbon efficiency. Keep the response under 100 words.";
+    try {
+      const mode = UI.elements.routeSelector.value;
+      let prompt = `Plan transit route and calculate eco-impact metrics for route option: ${mode}. Wait times: Transit = 4 min, Shuttle = 6 min (delays), Walk = clear, Rideshare = 20 min wait.`;
+      let systemPrompt = "You are the Stadium Transit Planner. Explain travel route directions, estimated time, and carbon efficiency. Keep the response under 100 words.";
 
-    UI.elements.routeOutput.classList.remove('hidden');
-    UI.elements.routeOutput.className = 'alert warning';
-    UI.elements.routeOutput.textContent = 'AI Computing route efficiency...';
+      UI.elements.routeOutput.classList.remove('hidden');
+      UI.elements.routeOutput.className = 'alert warning';
+      UI.elements.routeOutput.textContent = 'AI Computing route efficiency...';
 
-    const aiRes = await GenAIService.callAI(prompt, systemPrompt);
-    
-    UI.elements.routeOutput.className = 'alert success';
-    UI.elements.routeOutput.innerHTML = `<strong>AI Transit Advice:</strong><br>${sanitizeAndFormat(aiRes.content)}`;
+      const aiRes = await GenAIService.callAI(prompt, systemPrompt);
+      
+      UI.elements.routeOutput.className = 'alert success';
+      UI.elements.routeOutput.innerHTML = `<strong>AI Transit Advice:</strong><br>${sanitizeAndFormat(aiRes.content)}`;
+    } catch (e) {
+      console.error("Transit Route Calculation Error:", e);
+      UI.elements.routeOutput.className = 'alert danger';
+      UI.elements.routeOutput.textContent = `Error: ${e.message}`;
+      showInfoModal("⚠️ Transit Calculation Error", `<p>Failed to compute transit route: ${sanitizeAndFormat(e.message)}</p>`);
+    }
   };
 
   // Wayfinder Engine
   const handleWayfinding = async (event) => {
-    event.preventDefault();
-    const fromVal = UI.elements.wayfinderFrom.value;
-    const toVal = UI.elements.wayfinderTo.value;
-    const accessible = UI.elements.wayfinderAccessible.checked;
+    if (event && event.preventDefault) event.preventDefault();
+    try {
+      const fromVal = UI.elements.wayfinderFrom.value;
+      const toVal = UI.elements.wayfinderTo.value;
+      const accessible = UI.elements.wayfinderAccessible.checked;
 
-    // Detect bottlenecks dynamically from state
-    let standsStateSummary = Object.entries(State.stadiumState.stands)
-      .map(([stand, level]) => `${stand} is ${level.toUpperCase()}`)
-      .join(', ');
-    
-    let prompt = `Find step-by-step pedestrian path from ${fromVal} to ${toVal}. Spectator density status: ${standsStateSummary}. Accessibility needs: ${accessible ? 'Yes (Wheelchair accessibility required)' : 'No'}. Redirect paths if stands on the normal route are crowded.`;
-    let systemPrompt = "You are the Stadium Wayfinding AI. Direct spectators inside the venue avoiding high-density zones. List 3 simple steps. Keep it very clear.";
+      // Detect bottlenecks dynamically from state
+      let standsStateSummary = Object.entries(State.stadiumState.stands)
+        .map(([stand, level]) => `${stand} is ${level.toUpperCase()}`)
+        .join(', ');
+      
+      let prompt = `Find step-by-step pedestrian path from ${fromVal} to ${toVal}. Spectator density status: ${standsStateSummary}. Accessibility needs: ${accessible ? 'Yes (Wheelchair accessibility required)' : 'No'}. Redirect paths if stands on the normal route are crowded.`;
+      let systemPrompt = "You are the Stadium Wayfinding AI. Direct spectators inside the venue avoiding high-density zones. List 3 simple steps. Keep it very clear.";
 
-    UI.elements.wayfinderResult.classList.remove('hidden');
-    UI.elements.wayfinderResult.className = 'alert warning';
-    UI.elements.wayfinderSteps.textContent = 'Computing optimal path avoiding high density...';
+      UI.elements.wayfinderResult.classList.remove('hidden');
+      UI.elements.wayfinderResult.className = 'alert warning';
+      UI.elements.wayfinderSteps.textContent = 'Computing optimal path avoiding high density...';
 
-    // Highlight route on map
-    let gateL = fromVal.includes("Gate A") ? "A" : fromVal.includes("Gate B") ? "B" : fromVal.includes("Gate C") ? "C" : fromVal.includes("Gate D") ? "D" : fromVal.includes("Gate E") ? "E" : fromVal.includes("Gate F") ? "F" : "";
-    let standL = toVal.includes("Stand A") ? "A" : toVal.includes("Stand B") ? "B" : toVal.includes("Stand C") ? "C" : toVal.includes("Stand D") ? "D" : "";
-    highlightRoute(gateL, standL);
+      // Highlight route on map
+      let gateL = fromVal.includes("Gate A") ? "A" : fromVal.includes("Gate B") ? "B" : fromVal.includes("Gate C") ? "C" : fromVal.includes("Gate D") ? "D" : fromVal.includes("Gate E") ? "E" : fromVal.includes("Gate F") ? "F" : "";
+      let standL = toVal.includes("Stand A") ? "A" : toVal.includes("Stand B") ? "B" : toVal.includes("Stand C") ? "C" : toVal.includes("Stand D") ? "D" : "";
+      highlightRoute(gateL, standL);
 
-    const aiRes = await GenAIService.callAI(prompt, systemPrompt);
-    
-    UI.elements.wayfinderResult.className = 'alert success';
-    UI.elements.wayfinderRouteTitle.textContent = `Route: ${fromVal} ➔ ${toVal} ${accessible ? '(Accessible Path)' : ''}`;
-    UI.elements.wayfinderSteps.textContent = aiRes.content;
+      const aiRes = await GenAIService.callAI(prompt, systemPrompt);
+      
+      UI.elements.wayfinderResult.className = 'alert success';
+      UI.elements.wayfinderRouteTitle.textContent = `Route: ${fromVal} ➔ ${toVal} ${accessible ? '(Accessible Path)' : ''}`;
+      UI.elements.wayfinderSteps.textContent = aiRes.content;
+    } catch (e) {
+      console.error("Wayfinding Error:", e);
+      UI.elements.wayfinderResult.className = 'alert danger';
+      UI.elements.wayfinderSteps.textContent = `Error: ${e.message}`;
+      showInfoModal("⚠️ Wayfinding Error", `<p>Failed to compute wayfinding steps: ${sanitizeAndFormat(e.message)}</p>`);
+    }
   };
 
   // Generate public announcements in multiple languages
   const generateAnnouncement = async () => {
-    const topic = UI.elements.annTopic.value.trim();
-    if (!topic) {
-      showInfoModal('⚠️ Input Required', '<p>Please input a topic or reference incident for the announcement.</p>');
-      return;
+    try {
+      const topic = UI.elements.annTopic.value.trim();
+      if (!topic) {
+        showInfoModal('⚠️ Input Required', '<p>Please input a topic or reference incident for the announcement.</p>');
+        return;
+      }
+      const lang = UI.elements.annLang.value;
+      const tone = UI.elements.annTone.value;
+
+      let prompt = `Create a stadium PA announcement about: "${topic}". Language: ${lang}. Tone: ${tone}.`;
+      let systemPrompt = `You are the Head Operations Announcer at the FIFA World Cup 2026. Write a public announcement that matches the specified language and tone. Keep the copy short, professional, and clear for stadium speakers. Do not translate the name of the stadium.`;
+
+      UI.elements.annOutput.classList.remove('hidden');
+      UI.elements.annOutput.className = 'alert warning';
+      UI.elements.annText.textContent = 'AI generating announcement copy...';
+
+      const aiRes = await GenAIService.callAI(prompt, systemPrompt);
+
+      UI.elements.annOutput.className = 'alert success';
+      UI.elements.annText.textContent = aiRes.content;
+    } catch (e) {
+      console.error("Announcement Generation Error:", e);
+      UI.elements.annOutput.className = 'alert danger';
+      UI.elements.annText.textContent = `Error: ${e.message}`;
+      showInfoModal("⚠️ Generation Error", `<p>Failed to generate announcement: ${sanitizeAndFormat(e.message)}</p>`);
     }
-    const lang = UI.elements.annLang.value;
-    const tone = UI.elements.annTone.value;
-
-    let prompt = `Create a stadium PA announcement about: "${topic}". Language: ${lang}. Tone: ${tone}.`;
-    let systemPrompt = `You are the Head Operations Announcer at the FIFA World Cup 2026. Write a public announcement that matches the specified language and tone. Keep the copy short, professional, and clear for stadium speakers. Do not translate the name of the stadium.`;
-
-    UI.elements.annOutput.classList.remove('hidden');
-    UI.elements.annOutput.className = 'alert warning';
-    UI.elements.annText.textContent = 'AI generating announcement copy...';
-
-    const aiRes = await GenAIService.callAI(prompt, systemPrompt);
-
-    UI.elements.annOutput.className = 'alert success';
-    UI.elements.annText.textContent = aiRes.content;
   };
 
   // Triage incident log submit
   const handleLogIncident = async (event) => {
-    event.preventDefault();
-    const loc = UI.elements.incidentLoc.value;
-    const cat = UI.elements.incidentCat.value;
-    const desc = UI.elements.incidentDesc.value;
+    if (event && event.preventDefault) event.preventDefault();
+    try {
+      const loc = UI.elements.incidentLoc.value;
+      const cat = UI.elements.incidentCat.value;
+      const desc = UI.elements.incidentDesc.value;
 
-    // Call Triage AI to compute Priority & Dispatch action plan
-    let prompt = `Triage report details:\nLocation: ${loc}\nCategory: ${cat}\nIncident Description: ${desc}`;
-    let systemPrompt = "You are the Stadium Incident Triage AI. Determine priority (Low, Medium, or High) and write a one-sentence volunteer Dispatch Action Plan. Respond in the format: 'Priority: [PriorityLevel]. Action: [Dispatch instructions]'.";
+      // Call Triage AI to compute Priority & Dispatch action plan
+      let prompt = `Triage report details:\nLocation: ${loc}\nCategory: ${cat}\nIncident Description: ${desc}`;
+      let systemPrompt = "You are the Stadium Incident Triage AI. Determine priority (Low, Medium, or High) and write a one-sentence volunteer Dispatch Action Plan. Respond in the format: 'Priority: [PriorityLevel]. Action: [Dispatch instructions]'.";
 
-    // Show temporary overlay on button or list
-    const logBtn = UI.elements.incidentForm.querySelector('button');
-    const originalText = logBtn.textContent;
-    logBtn.textContent = 'AI Triaging Incident...';
-    logBtn.disabled = true;
+      // Show temporary overlay on button or list
+      const logBtn = UI.elements.incidentForm.querySelector('button');
+      const originalText = logBtn.textContent;
+      logBtn.textContent = 'AI Triaging Incident...';
+      logBtn.disabled = true;
 
-    const aiRes = await GenAIService.callAI(prompt, systemPrompt);
+      const aiRes = await GenAIService.callAI(prompt, systemPrompt);
 
-    logBtn.textContent = originalText;
-    logBtn.disabled = false;
+      logBtn.textContent = originalText;
+      logBtn.disabled = false;
 
-    // Parse priority
-    let priority = 'Medium';
-    if (aiRes.content.includes('Priority: High') || aiRes.content.includes('High')) {
-      priority = 'High';
-    } else if (aiRes.content.includes('Priority: Critical') || aiRes.content.includes('Critical')) {
-      priority = 'Critical';
-    } else if (aiRes.content.includes('Priority: Low') || aiRes.content.includes('Low')) {
-      priority = 'Low';
+      // Parse priority
+      let priority = 'Medium';
+      if (aiRes.content.includes('Priority: High') || aiRes.content.includes('High')) {
+        priority = 'High';
+      } else if (aiRes.content.includes('Priority: Critical') || aiRes.content.includes('Critical')) {
+        priority = 'Critical';
+      } else if (aiRes.content.includes('Priority: Low') || aiRes.content.includes('Low')) {
+        priority = 'Low';
+      }
+
+      // Determine map coordinates
+      let coords = State.coordMap[loc] || { x: 200, y: 200 };
+      
+      // Add to active incident list
+      const newInc = {
+        id: Date.now(),
+        location: loc,
+        category: cat,
+        desc: desc,
+        priority: priority,
+        dispatch: aiRes.content,
+        resolved: false,
+        coords: coords
+      };
+
+      State.incidents.push(newInc);
+      UI.renderIncidents();
+      UI.updateOpsPanel();
+      UI.elements.incidentForm.reset();
+
+      // Alert completion
+      showInfoModal('⚠️ Incident Logged', `<p>Incident successfully logged and prioritized by AI as <strong>${sanitizeAndFormat(priority)}</strong>.</p><p>Operational team has been dispatched.</p>`);
+    } catch (e) {
+      console.error("Incident Logging Error:", e);
+      showInfoModal("⚠️ Incident Logging Error", `<p>Failed to log incident: ${sanitizeAndFormat(e.message)}</p>`);
     }
-
-    // Determine map coordinates
-    let coords = State.coordMap[loc] || { x: 200, y: 200 };
-    
-    // Add to active incident list
-    const newInc = {
-      id: Date.now(),
-      location: loc,
-      category: cat,
-      desc: desc,
-      priority: priority,
-      dispatch: aiRes.content,
-      resolved: false,
-      coords: coords
-    };
-
-    State.incidents.push(newInc);
-    UI.renderIncidents();
-    UI.updateOpsPanel();
-    UI.elements.incidentForm.reset();
-
-    // Alert completion
-    showInfoModal('⚠️ Incident Logged', `<p>Incident successfully logged and prioritized by AI as <strong>${sanitizeAndFormat(priority)}</strong>.</p><p>Operational team has been dispatched.</p>`);
   };
 
   // Resolve incident
@@ -1101,122 +1241,132 @@ const StadiumPulse = (() => {
 
   // Simulator Scenario Trigger
   const triggerScenario = async (scenario) => {
-    State.activeScenario = scenario;
-    
-    // Clean old active states on simulation buttons
-    document.querySelectorAll('.sim-btn').forEach(btn => btn.classList.remove('active'));
-    document.getElementById(`sim-btn-${scenario}`).classList.add('active');
-
-    let copilotPrompt = "";
-    
-    if (scenario === 'normal') {
-      State.stadiumState.stands['Stand A'] = 'low';
-      State.stadiumState.stands['Stand B'] = 'low';
-      State.stadiumState.stands['Stand C'] = 'medium';
-      State.stadiumState.stands['Stand D'] = 'low';
+    try {
+      State.activeScenario = scenario;
       
-      State.stadiumState.gates['Gate A'] = 10;
-      State.stadiumState.gates['Gate B'] = 15;
-      State.stadiumState.gates['Gate C'] = 12;
-      State.stadiumState.gates['Gate D'] = 8;
-      
-      copilotPrompt = "Analyze normal stadium conditions. 10m gate wait times. Medium crowd in Stand C. No issues.";
-    } else if (scenario === 'exit') {
-      State.stadiumState.stands['Stand A'] = 'high';
-      State.stadiumState.stands['Stand B'] = 'medium';
-      State.stadiumState.stands['Stand C'] = 'critical';
-      State.stadiumState.stands['Stand D'] = 'medium';
-      
-      State.stadiumState.gates['Gate A'] = 35;
-      State.stadiumState.gates['Gate B'] = 45;
-      State.stadiumState.gates['Gate C'] = 50;
-      State.stadiumState.gates['Gate D'] = 20;
+      // Clean old active states on simulation buttons
+      document.querySelectorAll('.sim-btn').forEach(btn => btn.classList.remove('active'));
+      const activeBtn = document.getElementById(`sim-btn-${scenario}`);
+      if (activeBtn) activeBtn.classList.add('active');
 
-      copilotPrompt = "Analyze post-match exit rush. Critical crowd levels in Stand C, High in Stand A. Wait times at Gate B & C exceed 45 minutes.";
-    } else if (scenario === 'gate-failure') {
-      State.stadiumState.stands['Stand B'] = 'high';
+      let copilotPrompt = "";
       
-      State.stadiumState.gates['Gate B'] = 55; // scanner failed
-      State.stadiumState.gates['Gate F'] = 10;
+      if (scenario === 'normal') {
+        State.stadiumState.stands['Stand A'] = 'low';
+        State.stadiumState.stands['Stand B'] = 'low';
+        State.stadiumState.stands['Stand C'] = 'medium';
+        State.stadiumState.stands['Stand D'] = 'low';
+        
+        State.stadiumState.gates['Gate A'] = 10;
+        State.stadiumState.gates['Gate B'] = 15;
+        State.stadiumState.gates['Gate C'] = 12;
+        State.stadiumState.gates['Gate D'] = 8;
+        
+        copilotPrompt = "Analyze normal stadium conditions. 10m gate wait times. Medium crowd in Stand C. No issues.";
+      } else if (scenario === 'exit') {
+        State.stadiumState.stands['Stand A'] = 'high';
+        State.stadiumState.stands['Stand B'] = 'medium';
+        State.stadiumState.stands['Stand C'] = 'critical';
+        State.stadiumState.stands['Stand D'] = 'medium';
+        
+        State.stadiumState.gates['Gate A'] = 35;
+        State.stadiumState.gates['Gate B'] = 45;
+        State.stadiumState.gates['Gate C'] = 50;
+        State.stadiumState.gates['Gate D'] = 20;
+
+        copilotPrompt = "Analyze post-match exit rush. Critical crowd levels in Stand C, High in Stand A. Wait times at Gate B & C exceed 45 minutes.";
+      } else if (scenario === 'gate-failure') {
+        State.stadiumState.stands['Stand B'] = 'high';
+        
+        State.stadiumState.gates['Gate B'] = 55; // scanner failed
+        State.stadiumState.gates['Gate F'] = 10;
+        
+        copilotPrompt = "Analyze outage: Gate B scanner malfunction causing 55 min queue. Nearby Gate F (Accessibility/South-East) queue is only 10 mins.";
+      } else if (scenario === 'stand-concession') {
+        State.stadiumState.stands['Stand C'] = 'critical'; // concession bottleneck
+        
+        copilotPrompt = "Analyze Stand C concession corridor blockage. Food queues blocking exit rows causing crowd safety warnings.";
+      }
+
+      // Refresh visuals
+      UI.updateMapAesthetics();
+      UI.updateOpsPanel();
+
+      // Call Ops Co-pilot AI to update recommendations block
+      UI.elements.copilotAdvice.innerHTML = "<em>AI Co-Pilot analyzing scenario metrics...</em>";
+
+      let systemPrompt = "You are the Stadium Operations AI Co-Pilot. Write a highly tactical load-balancing plan based on the scenario metrics provided. Provide 3 specific actions using bold lists. Limit response to 120 words.";
       
-      copilotPrompt = "Analyze outage: Gate B scanner malfunction causing 55 min queue. Nearby Gate F (Accessibility/South-East) queue is only 10 mins.";
-    } else if (scenario === 'stand-concession') {
-      State.stadiumState.stands['Stand C'] = 'critical'; // concession bottleneck
-      
-      copilotPrompt = "Analyze Stand C concession corridor blockage. Food queues blocking exit rows causing crowd safety warnings.";
-    }
+      const aiRes = await GenAIService.callAI(copilotPrompt, systemPrompt);
+      UI.elements.copilotAdvice.innerHTML = `<strong>CO-PILOT RESPONSE PLAN:</strong><br>${sanitizeAndFormat(aiRes.content)}`;
 
-    // Refresh visuals
-    UI.updateMapAesthetics();
-    UI.updateOpsPanel();
-
-    // Call Ops Co-pilot AI to update recommendations block
-    UI.elements.copilotAdvice.innerHTML = "<em>AI Co-Pilot analyzing scenario metrics...</em>";
-
-    let systemPrompt = "You are the Stadium Operations AI Co-Pilot. Write a highly tactical load-balancing plan based on the scenario metrics provided. Provide 3 specific actions using bold lists. Limit response to 120 words.";
-    
-    const aiRes = await GenAIService.callAI(copilotPrompt, systemPrompt);
-    UI.elements.copilotAdvice.innerHTML = `<strong>CO-PILOT RESPONSE PLAN:</strong><br>${sanitizeAndFormat(aiRes.content)}`;
-
-    // Update chatbot view if in ops mode currently
-    if (State.activeView === 'ops') {
-      UI.resetChatGreeting();
+      // Update chatbot view if in ops mode currently
+      if (State.activeView === 'ops') {
+        UI.resetChatGreeting();
+      }
+    } catch (e) {
+      console.error("Scenario Trigger Error:", e);
+      showInfoModal("⚠️ Simulator Error", `<p>Failed to run simulator scenario: ${sanitizeAndFormat(e.message)}</p>`);
     }
   };
 
   // Chat Submissions (Floating Chat Panel)
   const handleChatSubmit = async (event) => {
-    event.preventDefault();
-    const input = UI.elements.chatInput.value.trim();
-    if (!input) return;
+    if (event && event.preventDefault) event.preventDefault();
+    try {
+      const input = UI.elements.chatInput.value.trim();
+      if (!input) return;
 
-    // Render User bubble
-    const userBubble = document.createElement('div');
-    userBubble.className = 'message user-message';
-    userBubble.textContent = input;
-    UI.elements.chatMessages.appendChild(userBubble);
-    
-    UI.elements.chatInput.value = '';
-    UI.elements.chatMessages.scrollTop = UI.elements.chatMessages.scrollHeight;
+      // Render User bubble
+      const userBubble = document.createElement('div');
+      userBubble.className = 'message user-message';
+      userBubble.textContent = input;
+      UI.elements.chatMessages.appendChild(userBubble);
+      
+      UI.elements.chatInput.value = '';
+      UI.elements.chatMessages.scrollTop = UI.elements.chatMessages.scrollHeight;
 
-    // Show loading
-    const loadBubble = document.createElement('div');
-    loadBubble.className = 'message ai-message';
-    loadBubble.textContent = 'Thinking...';
-    UI.elements.chatMessages.appendChild(loadBubble);
-    UI.elements.chatMessages.scrollTop = UI.elements.chatMessages.scrollHeight;
+      // Show loading
+      const loadBubble = document.createElement('div');
+      loadBubble.className = 'message ai-message';
+      loadBubble.textContent = 'Thinking...';
+      UI.elements.chatMessages.appendChild(loadBubble);
+      UI.elements.chatMessages.scrollTop = UI.elements.chatMessages.scrollHeight;
 
-    // Formulate Context Prompt based on View
-    let systemInstruction = "";
-    if (State.activeView === 'fan') {
-      systemInstruction = "You are the helpful Fan Concierge chatbot for StadiumPulse 2026. Suggest public transit, seat navigation paths, concession spots, or green badges. Match user language.";
-    } else if (State.activeView === 'staff') {
-      systemInstruction = "You are the Incident Triage Assistant for StadiumPulse. Provide priority ratings and deployment dispatch directives for logged field incidents.";
-    } else if (State.activeView === 'ops') {
-      systemInstruction = "You are the Operations Command Co-Pilot. Analyze crowd densities, gate wait times, and recommend load balancing strategies.";
+      // Formulate Context Prompt based on View
+      let systemInstruction = "";
+      if (State.activeView === 'fan') {
+        systemInstruction = "You are the helpful Fan Concierge chatbot for StadiumPulse 2026. Suggest public transit, seat navigation paths, concession spots, or green badges. Match user language.";
+      } else if (State.activeView === 'staff') {
+        systemInstruction = "You are the Incident Triage Assistant for StadiumPulse. Provide priority ratings and deployment dispatch directives for logged field incidents.";
+      } else if (State.activeView === 'ops') {
+        systemInstruction = "You are the Operations Command Co-Pilot. Analyze crowd densities, gate wait times, and recommend load balancing strategies.";
+      }
+
+      const aiRes = await GenAIService.callAI(input, systemInstruction);
+
+      // Remove loading
+      UI.elements.chatMessages.removeChild(loadBubble);
+
+      // If there is reasoning / chain-of-thought thought blocks, render it!
+      if (aiRes.thought) {
+        const thoughtDiv = document.createElement('div');
+        thoughtDiv.className = 'thought-block';
+        thoughtDiv.textContent = aiRes.thought;
+        UI.elements.chatMessages.appendChild(thoughtDiv);
+      }
+
+      // Render AI Response bubble
+      const aiBubble = document.createElement('div');
+      aiBubble.className = 'message ai-message';
+      aiBubble.textContent = aiRes.content;
+      UI.elements.chatMessages.appendChild(aiBubble);
+
+      UI.elements.chatMessages.scrollTop = UI.elements.chatMessages.scrollHeight;
+    } catch (e) {
+      console.error("Chat Submit Error:", e);
+      showInfoModal("⚠️ Chat Error", `<p>Failed to send query: ${sanitizeAndFormat(e.message)}</p>`);
     }
-
-    const aiRes = await GenAIService.callAI(input, systemInstruction);
-
-    // Remove loading
-    UI.elements.chatMessages.removeChild(loadBubble);
-
-    // If there is reasoning / chain-of-thought thought blocks, render it!
-    if (aiRes.thought) {
-      const thoughtDiv = document.createElement('div');
-      thoughtDiv.className = 'thought-block';
-      // Clean display of the reasoning steps
-      thoughtDiv.textContent = aiRes.thought;
-      UI.elements.chatMessages.appendChild(thoughtDiv);
-    }
-
-    // Render AI Response bubble
-    const aiBubble = document.createElement('div');
-    aiBubble.className = 'message ai-message';
-    aiBubble.textContent = aiRes.content;
-    UI.elements.chatMessages.appendChild(aiBubble);
-
-    UI.elements.chatMessages.scrollTop = UI.elements.chatMessages.scrollHeight;
   };
 
   // Map click triggers detail popups
@@ -1252,6 +1402,8 @@ const StadiumPulse = (() => {
 
   // Bootstrap Init
   return {
+    _state: State,
+    _sanitize: sanitizeAndFormat,
     start() {
       UI.init();
       // Start in default normal scenario to populate advisor at load
@@ -1274,4 +1426,4 @@ const StadiumPulse = (() => {
   };
 })();
 
-document.addEventListener('DOMContentLoaded', () => StadiumPulse.start());
+document.addEventListener('DOMContentLoaded', () => window.StadiumPulse.start());

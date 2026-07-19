@@ -994,3 +994,10 @@ h2 {
   stroke-width: 5px !important;
   transition: all 0.3s ease;
 }
+
+/* Accessibility Focus Ring glow */
+*:focus-visible {
+  outline: 2px solid var(--primary-color) !important;
+  outline-offset: 3px !important;
+  box-shadow: 0 0 12px rgba(0, 230, 118, 0.4) !important;
+}

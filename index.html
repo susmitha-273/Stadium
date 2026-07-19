@@ -29,13 +29,13 @@
 
       <!-- Stakeholder Mode Switcher -->
       <div class="view-switcher-panel" role="tablist" aria-label="Dashboard views">
-        <button id="view-btn-fan" class="view-btn active" role="tab" aria-selected="true" aria-controls="fan-view" onclick="StadiumPulse.switchView('fan')">
+        <button id="view-btn-fan" class="view-btn active" role="tab" aria-selected="true" aria-controls="fan-view">
           ⚽ Fan Portal
         </button>
-        <button id="view-btn-staff" class="view-btn" role="tab" aria-selected="false" aria-controls="staff-view" onclick="StadiumPulse.switchView('staff')">
+        <button id="view-btn-staff" class="view-btn" role="tab" aria-selected="false" aria-controls="staff-view">
           📋 Staff & Volunteer Hub
         </button>
-        <button id="view-btn-ops" class="view-btn" role="tab" aria-selected="false" aria-controls="ops-view" onclick="StadiumPulse.switchView('ops')">
+        <button id="view-btn-ops" class="view-btn" role="tab" aria-selected="false" aria-controls="ops-view">
           🚨 Ops Command Center
         </button>
         <button id="settings-btn" class="settings-toggle-btn" title="Open API Key Settings" aria-label="Open API Key Settings">
@@ -78,7 +78,7 @@
                 <option value="rideshare">Rideshare / Taxi Drop-off Zone</option>
               </select>
             </div>
-            <button class="btn primary-btn" onclick="StadiumPulse.calculateTransitRoute()">Calculate AI Route</button>
+            <button class="btn primary-btn" id="transit-calculate-btn">Calculate AI Route</button>
             <div id="route-output-box" class="alert success hidden" role="status" aria-live="polite" style="margin-top: 12px; font-size: 0.85rem;"></div>
           </div>
 
@@ -108,13 +108,13 @@
 
             <div style="margin-top: 16px; display: flex; flex-direction: column; gap: 8px;">
               <label style="display: flex; align-items: center; gap: 8px; font-size: 0.9rem; cursor: pointer;">
-                <input type="checkbox" id="eco-check-transit" onchange="StadiumPulse.updateEcoScore()"> Traveled via Public Transit / Shuttle (+15pts, -2.4kg CO2)
+                <input type="checkbox" id="eco-check-transit"> Traveled via Public Transit / Shuttle (+15pts, -2.4kg CO2)
               </label>
               <label style="display: flex; align-items: center; gap: 8px; font-size: 0.9rem; cursor: pointer;">
-                <input type="checkbox" id="eco-check-recycle" onchange="StadiumPulse.updateEcoScore()"> Recycled plastic cups/bottles (+10pts, -0.6kg CO2)
+                <input type="checkbox" id="eco-check-recycle"> Recycled plastic cups/bottles (+10pts, -0.6kg CO2)
               </label>
               <label style="display: flex; align-items: center; gap: 8px; font-size: 0.9rem; cursor: pointer;">
-                <input type="checkbox" id="eco-check-bottle" onchange="StadiumPulse.updateEcoScore()"> Brought reusable water flask (+10pts, -0.5kg CO2)
+                <input type="checkbox" id="eco-check-bottle"> Brought reusable water flask (+10pts, -0.5kg CO2)
               </label>
             </div>
 
@@ -129,7 +129,7 @@
           <h2>🗺️ Smart Wayfinder & Match Info</h2>
           <p class="subtitle">Enter your destination to compute a route avoiding congestion bottlenecks.</p>
 
-          <form id="wayfinder-form" onsubmit="StadiumPulse.handleWayfinding(event)">
+          <form id="wayfinder-form">
             <div class="input-group">
               <label for="wayfinder-from">Current Location / Gate Entry</label>
               <select id="wayfinder-from">
@@ -185,7 +185,7 @@
             <h2>⚠️ Log Field Incident</h2>
             <p class="subtitle" style="margin-bottom: 16px;">Report incidents on the floor. GenAI will prioritize and suggest triage plans.</p>
             
-            <form id="incident-form" onsubmit="StadiumPulse.handleLogIncident(event)">
+            <form id="incident-form">
               <div class="input-group">
                 <label for="incident-location">Incident Location</label>
                 <select id="incident-location" required>
@@ -256,7 +256,7 @@
               </div>
             </div>
 
-            <button class="btn secondary-btn" style="width: 100%;" onclick="StadiumPulse.generateAnnouncement()">Generate Announcement Text</button>
+            <button class="btn secondary-btn" id="announcement-generate-btn" style="width: 100%;">Generate Announcement Text</button>
 
             <div id="announcement-output-box" class="alert success hidden" role="status" aria-live="polite" style="margin-top: 12px; flex-direction: column; align-items: flex-start; gap: 8px;">
               <strong>Generated Announcement:</strong>
@@ -292,27 +292,27 @@
             <svg class="map-svg" viewBox="0 0 400 400" id="stadium-svg-map" width="400" height="400">
               <!-- Outer Ring (Gates) -->
               <!-- Gate A (North) -->
-              <line x1="200" y1="20" x2="200" y2="40" class="map-gate" id="map-gate-A" role="button" tabindex="0" aria-label="Gate A" onclick="StadiumPulse.showGateDetails('Gate A')" />
+              <line x1="200" y1="20" x2="200" y2="40" class="map-gate" id="map-gate-A" role="button" tabindex="0" aria-label="Gate A" />
               <!-- Gate B (East) -->
-              <line x1="380" y1="200" x2="360" y2="200" class="map-gate" id="map-gate-B" role="button" tabindex="0" aria-label="Gate B" onclick="StadiumPulse.showGateDetails('Gate B')" />
+              <line x1="380" y1="200" x2="360" y2="200" class="map-gate" id="map-gate-B" role="button" tabindex="0" aria-label="Gate B" />
               <!-- Gate C (South) -->
-              <line x1="200" y1="380" x2="200" y2="360" class="map-gate" id="map-gate-C" role="button" tabindex="0" aria-label="Gate C" onclick="StadiumPulse.showGateDetails('Gate C')" />
+              <line x1="200" y1="380" x2="200" y2="360" class="map-gate" id="map-gate-C" role="button" tabindex="0" aria-label="Gate C" />
               <!-- Gate D (West) -->
-              <line x1="20" y1="200" x2="40" y2="200" class="map-gate" id="map-gate-D" role="button" tabindex="0" aria-label="Gate D" onclick="StadiumPulse.showGateDetails('Gate D')" />
+              <line x1="20" y1="200" x2="40" y2="200" class="map-gate" id="map-gate-D" role="button" tabindex="0" aria-label="Gate D" />
               <!-- Gate E (VIP) -->
-              <line x1="80" y1="80" x2="100" y2="100" class="map-gate" id="map-gate-E" role="button" tabindex="0" aria-label="Gate E (VIP North)" onclick="StadiumPulse.showGateDetails('Gate E')" />
+              <line x1="80" y1="80" x2="100" y2="100" class="map-gate" id="map-gate-E" role="button" tabindex="0" aria-label="Gate E (VIP North)" />
               <!-- Gate F (Accessibility) -->
-              <line x1="320" y1="320" x2="300" y2="300" class="map-gate" id="map-gate-F" role="button" tabindex="0" aria-label="Gate F (Accessibility Entry)" onclick="StadiumPulse.showGateDetails('Gate F')" />
+              <line x1="320" y1="320" x2="300" y2="300" class="map-gate" id="map-gate-F" role="button" tabindex="0" aria-label="Gate F (Accessibility Entry)" />
 
               <!-- Outer Stand Sections -->
               <!-- Stand A (North stands) -->
-              <path d="M 100 100 A 141.4 141.4 0 0 1 300 100 L 270 130 A 99 99 0 0 0 130 130 Z" class="map-stand level-low" id="map-stand-A" role="button" tabindex="0" aria-label="Stand A (North stands)" onclick="StadiumPulse.showStandDetails('Stand A')" />
+              <path d="M 100 100 A 141.4 141.4 0 0 1 300 100 L 270 130 A 99 99 0 0 0 130 130 Z" class="map-stand level-low" id="map-stand-A" role="button" tabindex="0" aria-label="Stand A (North stands)" />
               <!-- Stand B (East stands) -->
-              <path d="M 300 100 A 141.4 141.4 0 0 1 300 300 L 270 270 A 99 99 0 0 0 270 130 Z" class="map-stand level-low" id="map-stand-B" role="button" tabindex="0" aria-label="Stand B (East stands)" onclick="StadiumPulse.showStandDetails('Stand B')" />
+              <path d="M 300 100 A 141.4 141.4 0 0 1 300 300 L 270 270 A 99 99 0 0 0 270 130 Z" class="map-stand level-low" id="map-stand-B" role="button" tabindex="0" aria-label="Stand B (East stands)" />
               <!-- Stand C (South stands) -->
-              <path d="M 300 300 A 141.4 141.4 0 0 1 100 300 L 130 270 A 99 99 0 0 0 270 270 Z" class="map-stand level-low" id="map-stand-C" role="button" tabindex="0" aria-label="Stand C (South stands)" onclick="StadiumPulse.showStandDetails('Stand C')" />
+              <path d="M 300 300 A 141.4 141.4 0 0 1 100 300 L 130 270 A 99 99 0 0 0 270 270 Z" class="map-stand level-low" id="map-stand-C" role="button" tabindex="0" aria-label="Stand C (South stands)" />
               <!-- Stand D (West stands) -->
-              <path d="M 100 300 A 141.4 141.4 0 0 1 100 100 L 130 130 A 99 99 0 0 0 130 270 Z" class="map-stand level-low" id="map-stand-D" role="button" tabindex="0" aria-label="Stand D (West stands)" onclick="StadiumPulse.showStandDetails('Stand D')" />
+              <path d="M 100 300 A 141.4 141.4 0 0 1 100 100 L 130 130 A 99 99 0 0 0 130 270 Z" class="map-stand level-low" id="map-stand-D" role="button" tabindex="0" aria-label="Stand D (West stands)" />
 
               <!-- Inner Ring Pitch -->
               <rect x="140" y="140" width="120" height="120" rx="10" fill="#1b263b" stroke="var(--primary-color)" stroke-width="1.5" />
@@ -356,16 +356,16 @@
             <p class="subtitle" style="margin-bottom: 16px;">Trigger mock stadium scenarios to stress test AI routing and resource advice.</p>
             
             <div class="sim-controls-grid">
-              <button class="sim-btn" id="sim-btn-normal" onclick="StadiumPulse.triggerScenario('normal')">
+              <button class="sim-btn" id="sim-btn-normal">
                 ✅ Normal Operations<br><small>Even distribute</small>
               </button>
-              <button class="sim-btn" id="sim-btn-exit" onclick="StadiumPulse.triggerScenario('exit')">
+              <button class="sim-btn" id="sim-btn-exit">
                 🚶 Post-Match Exit Rush<br><small>High load Stands & Gates A/C</small>
               </button>
-              <button class="sim-btn" id="sim-btn-gate-failure" onclick="StadiumPulse.triggerScenario('gate-failure')">
+              <button class="sim-btn" id="sim-btn-gate-failure">
                 🔌 Gate B Scanner Outage<br><small>Bottleneck at East gate</small>
               </button>
-              <button class="sim-btn" id="sim-btn-stand-concession" onclick="StadiumPulse.triggerScenario('stand-concession')">
+              <button class="sim-btn" id="sim-btn-stand-concession">
                 🌭 Stand C Concessions Hub<br><small>Concourse jam South stand</small>
               </button>
             </div>
@@ -426,7 +426,7 @@
     <!-- ==========================================
          FLOATING AI ASSISTANT WIDGET
          ========================================== -->
-    <button id="chat-toggle-btn" class="chat-toggle-btn" aria-haspopup="dialog" aria-expanded="false" aria-controls="chat-window" onclick="StadiumPulse.toggleChat()">
+    <button id="chat-toggle-btn" class="chat-toggle-btn" aria-haspopup="dialog" aria-expanded="false" aria-controls="chat-window">
       💬 AI Assistant
     </button>
 
@@ -437,8 +437,8 @@
           <span id="chat-mode-badge" class="chat-header-status" style="pointer-events: none;">Zero-Setup Mock Mode</span>
         </div>
         <div style="display: flex; gap: 8px; align-items: center;">
-          <button id="chat-minimize-btn" class="chat-close-btn" onclick="StadiumPulse.toggleMinimizeChat(event)" title="Minimize chat" aria-label="Minimize chat" style="font-size: 0.95rem;">➖</button>
-          <button id="chat-close-btn" class="chat-close-btn" onclick="StadiumPulse.toggleChat()" title="Close chat" aria-label="Close chat">✖</button>
+          <button id="chat-minimize-btn" class="chat-close-btn" title="Minimize chat" aria-label="Minimize chat" style="font-size: 0.95rem;">➖</button>
+          <button id="chat-close-btn" class="chat-close-btn" title="Close chat" aria-label="Close chat">✖</button>
         </div>
       </div>
 
@@ -446,7 +446,8 @@
         <!-- Prefilled greetings based on context -->
       </div>
 
-      <form id="chat-form" class="chat-form" onsubmit="StadiumPulse.handleChatSubmit(event)">
+      <form id="chat-form" class="chat-form">
+        <label for="chat-input" style="position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); border: 0;">Chat input field</label>
         <input type="text" id="chat-input" placeholder="Ask about gates, food, restrooms, or incident dispatch..." aria-label="Chat input field" required autocomplete="off">
         <button type="submit" class="btn primary-btn chat-send-btn">Send</button>
       </form>

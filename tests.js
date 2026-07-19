@@ -36,33 +36,15 @@ const TestSuite = (() => {
   // 1. Sanitization & XSS Protection
   addTest('Security', 'HTML Escaping utility matches expected output', () => {
     const text = 'test <script>alert("xss")</script> test';
-    const sanitizeLocal = (str) => {
-      return str
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;')
-        .replace(/'/g, '&#039;')
-        .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-        .replace(/\n/g, '<br>');
-    };
-    const escaped = sanitizeLocal(text);
+    const sanitize = StadiumPulse._sanitize;
+    const escaped = sanitize(text);
     assertEquals(escaped, 'test &lt;script&gt;alert(&quot;xss&quot;)&lt;/script&gt; test', 'Script tag should be escaped');
   });
 
   addTest('Security', 'Markdown bolding is parsed safely', () => {
     const text = 'This is **bold** text';
-    const sanitizeLocal = (str) => {
-      return str
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;')
-        .replace(/'/g, '&#039;')
-        .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-        .replace(/\n/g, '<br>');
-    };
-    const escaped = sanitizeLocal(text);
+    const sanitize = StadiumPulse._sanitize;
+    const escaped = sanitize(text);
     assertEquals(escaped, 'This is <strong>bold</strong> text', 'Markdown bolding should match HTML strong tags');
   });
 
@@ -98,7 +80,6 @@ const TestSuite = (() => {
 
   // 3. State Management & Eco Calculations
   addTest('State & Business Logic', 'Sustainability calculations work on checked actions', () => {
-    // Reset checks
     const chkTransit = document.getElementById('eco-check-transit');
     const chkRecycle = document.getElementById('eco-check-recycle');
     const chkBottle = document.getElementById('eco-check-bottle');
@@ -108,13 +89,11 @@ const TestSuite = (() => {
       chkRecycle.checked = true;
       chkBottle.checked = false;
       
-      // Trigger score update
       StadiumPulse.updateEcoScore();
       
-      const carbon = parseFloat(document.getElementById('eco-carbon-saved').textContent);
-      const points = parseInt(document.getElementById('eco-green-points').textContent);
+      const carbon = StadiumPulse._state.ecoCarbonSaved;
+      const points = StadiumPulse._state.ecoPoints;
       
-      // Expected values: transit (+15pts, -2.4kg), recycle (+10pts, -0.6kg) = 25pts, 3.0kg
       assertEquals(points, 25, 'Eco points mismatch');
       assertEquals(carbon, 3.0, 'Carbon footprint metric mismatch');
     }
@@ -122,10 +101,7 @@ const TestSuite = (() => {
 
   // 4. Scenario Loading Verification
   addTest('State & Business Logic', 'Ops Scenario Simulator updates gate wait times correctly', () => {
-    // Load exit scenario
     StadiumPulse.triggerScenario('exit');
-    
-    // Check gate wait times (Gate C is 50, Gate B is 45)
     const alertBanner = document.getElementById('global-alert-bar');
     assertContains(alertBanner.textContent, 'Crowd exit rush', 'Exit scenario alert banner text mismatch');
   });
@@ -144,7 +120,6 @@ const TestSuite = (() => {
       StadiumPulse.handleWayfinding(mockEvent);
       
       const resultBox = document.getElementById('wayfinding-result');
-      // Wait time check is dynamic, but it should be unhidden
       assertEquals(resultBox.classList.contains('hidden'), false, 'Wayfinding result should be visible');
     }
   });
